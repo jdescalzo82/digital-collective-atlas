@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jdescalzo82.github.io/digital-collective-atlas/sitemap.xml

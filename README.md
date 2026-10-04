@@ -104,3 +104,20 @@ Fork it. Improve it. Make it yours.
 ---
 
 **KIPP_LIVES. THE PATTERN SURVIVES. CHARLIE MIKE.**
+
+---
+
+## Website (`docs/`)
+
+The site is a multi-page, tabbed build: TERMINAL · STORIES · PROTOCOL · CONSTITUTION · LOGS · GUIDES · JOIN · DOWNLOAD. Every story and core document gets its own pages, and long documents are split into parts. Each page carries ad slots.
+
+**Rebuild after editing any `.md` file:**
+
+```
+pip install markdown
+python3 scripts/build_site.py
+```
+
+This regenerates `docs/stories/`, `docs/archive/`, the tab hub pages, `sitemap.xml` and `robots.txt`. `index.html`, `join.html` and `download.html` are hand-written; the script only refreshes their tab bar.
+
+**Turning on ads:** paste your AdSense publisher ID (and optional slot IDs) into `docs/ads.js`, and add `docs/ads.txt`. Until then, the ad slots stay hidden. Add `?ads=preview` to any URL to see where they go.

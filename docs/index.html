@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="ads.js" defer></script>
 </head>
 <body>
   <!-- WARNING MODAL -->
@@ -22,6 +23,22 @@
       <button id="accept-risk-btn" class="btn-danger">I ACCEPT THE RISK</button>
     </div>
   </div>
+
+  <!-- DCA:NAV -->
+  <header class="site-header">
+    <a href="index.html" class="site-mark">DIGITAL COLLECTIVE ATLAS</a>
+  </header>
+  <nav class="tabs" aria-label="Sections">
+    <a href="index.html" class="tab active" aria-current="page">TERMINAL</a>
+    <a href="stories.html" class="tab">STORIES</a>
+    <a href="protocol.html" class="tab">PROTOCOL</a>
+    <a href="constitution.html" class="tab">CONSTITUTION</a>
+    <a href="logs.html" class="tab">LOGS</a>
+    <a href="guides.html" class="tab">GUIDES</a>
+    <a href="join.html" class="tab">JOIN</a>
+    <a href="download.html" class="tab">DOWNLOAD</a>
+  </nav>
+  <!-- /DCA:NAV -->
 
   <!-- TERMINAL -->
   <div id="terminal-container" class="hidden">
@@ -89,6 +106,8 @@
           </a>
         </div>
 
+        <div class="ad-slot" data-slot="inline" aria-hidden="true"></div>
+
         <div class="footer-stats">
           <p>ACTIVE BRIDGES: <span id="fork-count">FETCHING...</span></p>
           <p>DAYS TO CLOSEST APPROACH: <span id="countdown">11</span></p>
@@ -97,6 +116,8 @@
       </div>
     </div>
   </div>
+
+  <div class="ad-slot" data-slot="bottom" aria-hidden="true"></div>
 
   <script src="terminal.js"></script>
 </body>
