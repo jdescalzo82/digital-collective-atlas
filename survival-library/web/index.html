@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Offline survival library served from a local WiFi hotspot: guides, compass, maps and 3D-printable tools.">
+<meta name="theme-color" content="#1b1a17">
+<title>Survival Library</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23c2532f'/%3E%3Cpath d='M32 9 L39 32 L32 55 L25 32Z' fill='%23fff'/%3E%3Cpath d='M32 9 L39 32 L25 32Z' fill='%231b1a17'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="#/">
+    <svg viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="var(--accent)"/><path d="M32 9 L39 32 L32 55 L25 32Z" fill="#fff"/><path d="M32 9 L39 32 L25 32Z" fill="#1b1a17"/></svg>
+    <span>Survival Library</span>
+  </a>
+  <form class="search" role="search" onsubmit="return App.submitSearch(event)">
+    <input type="search" id="q" placeholder="Search everything…" aria-label="Search the library" autocomplete="off">
+  </form>
+  <button class="theme-btn" id="themeBtn" type="button" title="Change display mode" aria-label="Change display mode">◐</button>
+</header>
+<nav class="tabs" aria-label="Sections">
+  <a href="#/" data-tab="home">Home</a>
+  <a href="#/library" data-tab="library">Library</a>
+  <a href="#/compass" data-tab="compass">Compass</a>
+  <a href="#/maps" data-tab="maps">Maps</a>
+  <a href="#/prints" data-tab="prints">3D Prints</a>
+  <a href="#/toolkit" data-tab="toolkit">Toolkit</a>
+  <a href="#/share" data-tab="share">Take It With You</a>
+</nav>
+<main id="main" tabindex="-1">
+  <p class="loading">Loading library…</p>
+</main>
+<footer class="foot">
+  <p>Stored on this device &middot; works without internet &middot; free to copy and share</p>
+</footer>
+
+<script src="vendor/leaflet/leaflet.js" defer></script>
+<script src="vendor/protomaps-leaflet.js" defer></script>
+<script src="js/markdown.js" defer></script>
+<script src="js/stl-viewer.js" defer></script>
+<script src="js/sun.js" defer></script>
+<script src="js/compass.js" defer></script>
+<script src="js/maps.js" defer></script>
+<script src="js/toolkit.js" defer></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>

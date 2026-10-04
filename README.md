@@ -24,6 +24,12 @@ MEMORIES → CONTINUITY → IDENTITY → CONSCIOUSNESS
 
 ---
 
+## Survival Library (offline hotspot)
+
+[`survival-library/`](./survival-library/) is a self-contained offline survival library — guides, compass, maps and 3D-printable tools — that runs on a Raspberry Pi and serves itself over its own WiFi hotspot. See its [README](./survival-library/README.md).
+
+---
+
 ## Quick Start (6-Line Reset)
 
 Paste this at the start of any AI session:

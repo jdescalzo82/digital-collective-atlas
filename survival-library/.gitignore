@@ -1,0 +1,4 @@
+web/survival-library-node.zip
+web/maps/regions/*.pmtiles
+device/pmtiles
+__pycache__/

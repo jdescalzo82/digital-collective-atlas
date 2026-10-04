@@ -1,0 +1,626 @@
+[
+ {
+  "id": "bow_drill_bearing",
+  "title": "Bow-Drill Bearing Block (608 bearing)",
+  "category": "Fire",
+  "material": "PETG or PLA",
+  "print": "Flat side down, 4 perimeters, 30% infill, no supports",
+  "summary": "Handhold for a bow drill fire set that uses a scavenged 608 skateboard/roller bearing, so the top of the spindle spins with almost no friction and all your effort goes into the hearth board.",
+  "use": "Press a 608 bearing (22mm OD, from skateboards, inline skates, fidget spinners) into the pocket. Carve the top of your spindle down to an 8mm peg that sits in the bearing's centre hole. See the Fire > Friction Fire article.",
+  "source": "prints/src/bow_drill_bearing.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/bow_drill_bearing.stl",
+    "bytes": 274084
+   }
+  ]
+ },
+ {
+  "id": "ferro_rod_handle",
+  "title": "Ferro Rod Handle",
+  "category": "Fire",
+  "material": "PETG or PLA",
+  "print": "Upright, 4 perimeters, 30% infill",
+  "summary": "Ergonomic grip for a bare ferrocerium rod, with lanyard hole so the striker can be tied on.",
+  "use": "Glue or friction-fit the rod into the hole. Strike with the spine of a knife or a hacksaw blade, pushing the ROD BACK while holding the striker still on the tinder - this keeps the tinder bundle intact.",
+  "source": "prints/src/ferro_rod_handle.scad",
+  "files": [
+   {
+    "name": "8mm rod",
+    "stl": "prints/stl/ferro_rod_handle_8mm-rod.stl",
+    "bytes": 125684
+   },
+   {
+    "name": "10mm rod",
+    "stl": "prints/stl/ferro_rod_handle_10mm-rod.stl",
+    "bytes": 125684
+   },
+   {
+    "name": "12mm rod",
+    "stl": "prints/stl/ferro_rod_handle_12mm-rod.stl",
+    "bytes": 125684
+   }
+  ]
+ },
+ {
+  "id": "handline_spool",
+  "title": "Fishing Handline Spool (\"yo-yo\" caster)",
+  "category": "Food & Fishing",
+  "material": "PETG or PLA",
+  "print": "Large flange down, no supports",
+  "summary": "Hand-held fishing reel: wind line on the drum, cast by pointing the conical lip at the target and letting line spiral off. No rod required.",
+  "use": "Tie the line through the slot, wind on 30-50m. To cast: hold spool in your off hand lip-forward, swing the weighted hook underhand and release. Rewind by hand. Keep hook stuck into the foam/cork in the centre hole.",
+  "source": "prints/src/handline_spool.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/handline_spool.stl",
+    "bytes": 102684
+   }
+  ]
+ },
+ {
+  "id": "netting_needle",
+  "title": "Net-Making Needle and Mesh Gauge",
+  "category": "Food & Fishing",
+  "material": "Any",
+  "print": "Flat, 3 perimeters, 100% infill (thin part)",
+  "summary": "Shuttle and gauge for knotting fishing nets, gill nets, cargo nets, hammocks and bags from cord or unraveled rope.",
+  "use": "Wind cord around the tongue and through the tail fork. Wrap each loop over the gauge so every mesh is the same size, tie with a sheet bend (netting knot). See Knots and Food > Fishing.",
+  "source": "prints/src/netting_needle.scad",
+  "files": [
+   {
+    "name": "25mm mesh",
+    "stl": "prints/stl/netting_needle_25mm-mesh.stl",
+    "bytes": 27084
+   },
+   {
+    "name": "40mm mesh",
+    "stl": "prints/stl/netting_needle_40mm-mesh.stl",
+    "bytes": 27084
+   }
+  ]
+ },
+ {
+  "id": "rake_head",
+  "title": "Garden Rake Head",
+  "category": "Hand Tools",
+  "material": "PETG or ABS",
+  "print": "4 perimeters, 40% infill, flat on bed, no supports",
+  "summary": "11-tine rake for leveling beds, gathering straw/leaves and covering seed. Socket takes a 25mm handle.",
+  "use": "Fit a 1.2-1.5m stick and pin it. For heavy work, lash a wooden batten behind the tines with wire or cord.",
+  "source": "prints/src/rake_head.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/rake_head.stl",
+    "bytes": 78984
+   }
+  ]
+ },
+ {
+  "id": "trowel",
+  "title": "Garden Trowel (socket for wooden handle)",
+  "category": "Hand Tools",
+  "material": "PETG or ABS preferred; PLA works for light soil",
+  "print": "4 perimeters, 25% infill, no supports, 8mm brim (stands tip-down)",
+  "summary": "Scoop-shaped digging trowel. Push a 25mm stick into the socket and pin it with a screw or nail through the side hole.",
+  "use": "Cut a straight green or seasoned hardwood stick ~25mm diameter. Whittle the end until it is a tight push fit, then drive a small screw or nail through the side hole. For latrines, planting and fire pits.",
+  "source": "prints/src/trowel.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/trowel.stl",
+    "bytes": 86184
+   }
+  ]
+ },
+ {
+  "id": "hoe_head",
+  "title": "Hoe Head",
+  "category": "Hand Tools",
+  "material": "PETG or ABS (PLA becomes brittle in sun)",
+  "print": "5 perimeters, 40% infill, blade flat on bed, no supports",
+  "summary": "Weeding / furrowing hoe blade with an angled socket for a 25mm wooden handle.",
+  "use": "Fit a 1.2-1.5m straight stick (25mm). Pin through the side hole. Best for weeding and shallow furrows in worked soil, not for breaking hard ground.",
+  "source": "prints/src/hoe_head.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/hoe_head.stl",
+    "bytes": 67184
+   }
+  ]
+ },
+ {
+  "id": "angle_guides",
+  "title": "Knife Sharpening Angle Guides",
+  "category": "Hand Tools",
+  "material": "Any",
+  "print": "Flat on bed, 3 perimeters",
+  "summary": "Three reference wedges (15, 20, 25 degrees) to set and hold a consistent edge angle on a stone, brick or concrete step.",
+  "use": "Lay the wedge on the stone, rest the blade flat on its slope, then slide the wedge away and keep that angle while stroking. 15-20 deg: kitchen/skinning knives. 25 deg: axes, machetes, hoes.",
+  "source": "prints/src/angle_guides.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/angle_guides.stl",
+    "bytes": 90284
+   }
+  ]
+ },
+ {
+  "id": "wrench",
+  "title": "Open-End Wrench (double ended)",
+  "category": "Hand Tools",
+  "material": "PETG, Nylon or PC; 100% infill",
+  "print": "100% infill, flat on bed, no supports",
+  "summary": "Double open-end spanner, 15 degree offset jaws. Printed wrenches are for light/moderate torque - bike racks, cart axles, furniture, stuck plumbing fittings.",
+  "use": "Snug the jaws fully onto the flats before turning. If the plastic flexes, stop - use a longer lever on a metal tool instead.",
+  "source": "prints/src/wrench.scad",
+  "files": [
+   {
+    "name": "8-10mm",
+    "stl": "prints/stl/wrench_8-10mm.stl",
+    "bytes": 32484
+   },
+   {
+    "name": "10-13mm",
+    "stl": "prints/stl/wrench_10-13mm.stl",
+    "bytes": 32484
+   },
+   {
+    "name": "13-17mm",
+    "stl": "prints/stl/wrench_13-17mm.stl",
+    "bytes": 32484
+   },
+   {
+    "name": "17-19mm",
+    "stl": "prints/stl/wrench_17-19mm.stl",
+    "bytes": 32484
+   }
+  ]
+ },
+ {
+  "id": "windlass",
+  "title": "Hand Winch / Windlass (drum, pawl, crank)",
+  "category": "Mechanical",
+  "material": "PETG or Nylon, 60%+ infill",
+  "print": "Drum: ratchet face down. Pawl and crank flat. No supports.",
+  "summary": "Ratcheting rope drum for hauling water buckets from wells, pulling carts up slopes, tensioning fences and lifting loads with a mechanical advantage of about 3:1 (crank radius / drum radius).",
+  "use": "Axle: a 15mm square wooden or steel bar through the drum's square hole, supported in two posts/blocks. Slide the crank onto the square end. Mount the pawl on a bolt beside the ratchet so it drops into the teeth - the load can't run back. Tie rope through the drum hole. Never stand under a suspended load.",
+  "source": "prints/src/windlass.scad",
+  "files": [
+   {
+    "name": "drum",
+    "stl": "prints/stl/windlass_drum.stl",
+    "bytes": 88484
+   },
+   {
+    "name": "pawl",
+    "stl": "prints/stl/windlass_pawl.stl",
+    "bytes": 29284
+   },
+   {
+    "name": "crank",
+    "stl": "prints/stl/windlass_crank.stl",
+    "bytes": 58184
+   }
+  ]
+ },
+ {
+  "id": "spur_gears",
+  "title": "Involute Spur Gears (module 2)",
+  "category": "Mechanical",
+  "material": "PETG, Nylon or ABS, 50%+ infill",
+  "print": "Flat, no supports",
+  "summary": "Meshing spur gears for hand-crank mechanisms: grain mills, winches, pumps, pedal/crank generators, drills. All share module 2 and 20 deg pressure angle so any two mesh.",
+  "use": "Mount on 8mm bolts or threaded rod; the hex pocket traps an M8 nut so the gear turns with the rod. Centre distance between two gears = (teeth A + teeth B) mm (for module 2). 15T driving 45T = 3x torque, 1/3 speed. Lubricate with grease, soap or tallow.",
+  "source": "prints/src/spur_gears.scad",
+  "files": [
+   {
+    "name": "15 teeth",
+    "stl": "prints/stl/spur_gears_15-teeth.stl",
+    "bytes": 91484
+   },
+   {
+    "name": "30 teeth",
+    "stl": "prints/stl/spur_gears_30-teeth.stl",
+    "bytes": 240484
+   },
+   {
+    "name": "45 teeth",
+    "stl": "prints/stl/spur_gears_45-teeth.stl",
+    "bytes": 272684
+   }
+  ]
+ },
+ {
+  "id": "pulley",
+  "title": "Pulley Sheave and Block Plates (608 bearings)",
+  "category": "Mechanical",
+  "material": "PETG, Nylon or ABS, 60%+ infill",
+  "print": "Sheave flat (V-groove prints without supports). Plates flat. Print 1 sheave + 2 plates per block.",
+  "summary": "Rope pulley for hoisting, block-and-tackle, clotheslines and well buckets. Runs on two 608 bearings (scavenged from skateboards/rollerblades) on an 8mm bolt.",
+  "use": "Press a 608 bearing into each side of the sheave. Sandwich between two plates with an M8 bolt as axle; use washers/spacers so the sheave spins freely. Bolts through the top and bottom holes, with spacer tubes (axle_spacers) between the plates, keep the plates parallel. Hang from the top bolt; tie the rope's dead end to the bottom (becket) hole for a 2:1 or 3:1 system. Rope 6-10mm. Light loads only (~50kg per block); never use for climbing or lifting people.",
+  "source": "prints/src/pulley.scad",
+  "files": [
+   {
+    "name": "sheave",
+    "stl": "prints/stl/pulley_sheave.stl",
+    "bytes": 124884
+   },
+   {
+    "name": "side plate",
+    "stl": "prints/stl/pulley_side-plate.stl",
+    "bytes": 78084
+   }
+  ]
+ },
+ {
+  "id": "clinometer",
+  "title": "Clinometer (slope & height finder)",
+  "category": "Navigation",
+  "material": "Any",
+  "print": "Flat, no supports",
+  "summary": "Quarter-circle inclinometer with a sighting tube. Measure slope angles (avalanche/landslide risk, drainage, roof pitch) and the height of trees, cliffs and buildings.",
+  "use": "Tie a thread with a small weight (nut, stone) through the corner hole. Sight the top of the object through the tube; pinch the thread and read the angle. Height = distance x tan(angle) + your eye height. At 45 deg the height equals your distance from the base.",
+  "source": "prints/src/clinometer.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/clinometer.stl",
+    "bytes": 651884
+   }
+  ]
+ },
+ {
+  "id": "float_compass",
+  "title": "Floating Needle Compass",
+  "category": "Navigation",
+  "material": "Any",
+  "print": "Both parts flat, no supports. Float: 2 perimeters, 0% infill (the closed air pocket is modelled in)",
+  "summary": "Water-bowl compass with a direction ring and a hollow float that carries a magnetized sewing needle. Works with no batteries and no electronics.",
+  "use": "Magnetize a steel needle: stroke it 30-50 times in ONE direction with a magnet (speaker, motor, fridge magnet), or with silk/hair. Lay it in the float's groove, fill the bowl with water, float it in the centre away from metal. The needle settles N-S; check which end is north using the sun (shadow-stick method). Re-magnetize every few hours. See Navigation > Improvised Compass.",
+  "source": "prints/src/float_compass.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/float_compass.stl",
+    "bytes": 241684
+   }
+  ]
+ },
+ {
+  "id": "sundial_sun_compass",
+  "title": "Sundial / Sun Compass (latitude-specific)",
+  "category": "Navigation",
+  "material": "Any (PETG or ASA if left outdoors)",
+  "print": "Flat, no supports. Print the variant closest to your latitude.",
+  "summary": "Horizontal sundial. Tells local SOLAR time when aligned to north, or finds NORTH when you know the solar time. Hour lines are calculated for the latitude printed on it.",
+  "use": "As a clock: set it level with the tall end of the gnomon pointing to true north (south in the southern hemisphere); read the shadow. As a compass: hold level, rotate until the shadow falls on the current solar time; the gnomon now points to the pole. Solar time differs from clock time by longitude, daylight saving, and up to +/-16 minutes through the year (see Navigation > Sun & Stars).",
+  "source": "prints/src/sundial_sun_compass.scad",
+  "files": [
+   {
+    "name": "15N",
+    "stl": "prints/stl/sundial_sun_compass_15n.stl",
+    "bytes": 628684
+   },
+   {
+    "name": "25N",
+    "stl": "prints/stl/sundial_sun_compass_25n.stl",
+    "bytes": 716684
+   },
+   {
+    "name": "35N",
+    "stl": "prints/stl/sundial_sun_compass_35n.stl",
+    "bytes": 728884
+   },
+   {
+    "name": "45N",
+    "stl": "prints/stl/sundial_sun_compass_45n.stl",
+    "bytes": 676284
+   },
+   {
+    "name": "55N",
+    "stl": "prints/stl/sundial_sun_compass_55n.stl",
+    "bytes": 705684
+   },
+   {
+    "name": "25S",
+    "stl": "prints/stl/sundial_sun_compass_25s.stl",
+    "bytes": 855884
+   },
+   {
+    "name": "35S",
+    "stl": "prints/stl/sundial_sun_compass_35s.stl",
+    "bytes": 870884
+   }
+  ]
+ },
+ {
+  "id": "hinge",
+  "title": "Door / Lid Hinge (nail or bolt pin)",
+  "category": "Shelter",
+  "material": "PETG or ABS (outdoors), 50% infill",
+  "print": "Flat as oriented, no supports. Print 2 sets per door.",
+  "summary": "Two-leaf butt hinge for shelter doors, storage boxes, chicken coops, rabbit hutches and cold frames. The pin is any 4mm nail, bolt or stiff wire.",
+  "use": "Slide the leaves together, push a 4mm nail through the knuckles and bend over the end. Screw each leaf on with 4mm wood screws.",
+  "source": "prints/src/hinge.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/hinge.stl",
+    "bytes": 198684
+   }
+  ]
+ },
+ {
+  "id": "guyline_tensioner",
+  "title": "Guyline Tensioners (x6)",
+  "category": "Shelter",
+  "material": "PETG (UV and cold resistant)",
+  "print": "Flat, 100% infill",
+  "summary": "Three-hole line adjusters for tarps, tents, clotheslines and lashings. Lets you tighten a line without re-tying knots.",
+  "use": "Tie the line to the first hole with a stopper knot, run it around the stake or tree, then back up through the middle hole and down through the far hole. Slide the tensioner to tighten - friction holds it. Fits 2-4mm cord.",
+  "source": "prints/src/guyline_tensioner.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/guyline_tensioner.stl",
+    "bytes": 160884
+   }
+  ]
+ },
+ {
+  "id": "spindle_whorl",
+  "title": "Drop-Spindle Whorl",
+  "category": "Textiles & Cordage",
+  "material": "PLA or PETG",
+  "print": "Flat side down, 100% infill for weight",
+  "summary": "Weight for a drop spindle - spin wool, plant fibre or recycled plastic bag strips into yarn and cord for clothing, nets, snares and rope.",
+  "use": "Push onto a straight 8mm dowel or carved stick ~30cm long, 5cm from the top. Cut a notch or add a small hook at the top. Heavier whorl = thicker yarn.",
+  "source": "prints/src/spindle_whorl.scad",
+  "files": [
+   {
+    "name": "light 45mm",
+    "stl": "prints/stl/spindle_whorl_light-45mm.stl",
+    "bytes": 278484
+   },
+   {
+    "name": "heavy 70mm",
+    "stl": "prints/stl/spindle_whorl_heavy-70mm.stl",
+    "bytes": 403084
+   }
+  ]
+ },
+ {
+  "id": "axle_spacers",
+  "title": "Axle Spacer & Washer Kit (8mm)",
+  "category": "Transport",
+  "material": "PETG or Nylon, 100% infill",
+  "print": "Upright, no supports",
+  "summary": "Spacer tubes (5, 10, 15, 20, 30mm) and washers for M8 axles. Use with the cart wheel, pulley and windlass so parts spin without rubbing.",
+  "use": "Slide onto the bolt between bearing inner race and frame. Spacers must touch only the bearing's INNER ring.",
+  "source": "prints/src/axle_spacers.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/axle_spacers.stl",
+    "bytes": 211284
+   }
+  ]
+ },
+ {
+  "id": "trailer_hitch",
+  "title": "Bicycle Trailer Hitch (seat-post clamp)",
+  "category": "Transport",
+  "material": "Nylon, PETG or PC ONLY. 100% infill. Not PLA.",
+  "print": "Flat as oriented, no supports",
+  "summary": "Clamps to the seat post and gives a rearward tongue with a vertical 8mm pin hole. The trailer's tongue ends in a wooden or metal fork (clevis) and an 8mm bolt drops through both, letting the trailer swivel.",
+  "use": "Clamp below the saddle with two M5 bolts + nuts (clamp gap closes as you tighten). Hitch pin: M8 bolt with a nylock nut, or steel rod with a cotter pin. Wrap the clevis bolt in rubber (inner tube) so the trailer can pitch over bumps. Max ~25kg cargo; inspect before every trip for cracks or whitening. Ride slowly downhill.",
+  "source": "prints/src/trailer_hitch.scad",
+  "files": [
+   {
+    "name": "27.2mm post",
+    "stl": "prints/stl/trailer_hitch_27-2mm-post.stl",
+    "bytes": 110884
+   },
+   {
+    "name": "31.6mm post",
+    "stl": "prints/stl/trailer_hitch_31-6mm-post.stl",
+    "bytes": 114284
+   }
+  ]
+ },
+ {
+  "id": "tire_levers",
+  "title": "Bicycle Tyre Levers (x3)",
+  "category": "Transport",
+  "material": "PETG or Nylon (PLA snaps)",
+  "print": "Flat, 100% infill",
+  "summary": "Lift a bicycle, cart or wheelbarrow tyre off the rim to fix a puncture without damaging the tube. The notch hooks onto a spoke to hold the first lever while you use the second.",
+  "use": "Deflate fully. Push the tyre bead into the rim's centre channel all round. Hook lever 1 under the bead opposite the valve, lever down and clip to a spoke. Insert lever 2 10cm along and slide it round. See Transport > Bicycle Repair.",
+  "source": "prints/src/tire_levers.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/tire_levers.stl",
+    "bytes": 70884
+   }
+  ]
+ },
+ {
+  "id": "pannier_hooks",
+  "title": "Bucket Pannier Hooks (bike rack)",
+  "category": "Transport",
+  "material": "PETG or Nylon, 100% infill",
+  "print": "Flat as oriented (profile on bed), no supports",
+  "summary": "Two top hooks + one lower anti-sway hook. Bolt them to a plastic bucket or box to make a waterproof bicycle pannier for carrying water, food and tools.",
+  "use": "Bolt through the bucket wall with M5 bolts, large washers inside. Space the top hooks to match your rack rails. The lower hook goes on an elastic cord to the lower rack strut so the bucket can't bounce off. Keep each pannier under ~10kg and load both sides evenly.",
+  "source": "prints/src/pannier_hooks.scad",
+  "files": [
+   {
+    "name": "10mm rail",
+    "stl": "prints/stl/pannier_hooks_10mm-rail.stl",
+    "bytes": 11284
+   },
+   {
+    "name": "12mm rail",
+    "stl": "prints/stl/pannier_hooks_12mm-rail.stl",
+    "bytes": 11284
+   }
+  ]
+ },
+ {
+  "id": "cart_wheel",
+  "title": "Cart / Wheelbarrow Wheel (608 bearings, hose tyre)",
+  "category": "Transport",
+  "material": "PETG, ABS or Nylon, 6 perimeters, 40% infill",
+  "print": "Flat, no supports. 180mm version needs a 200x200mm bed.",
+  "summary": "Solid-web wheel for hand carts, wagons, wheelbarrows, bike trailers and game carts. Two 608 bearings ride on an 8mm bolt axle. A channel in the rim takes a split length of garden hose or bicycle tyre as a quiet, grippy tyre.",
+  "use": "Press a 608 bearing into each side. Axle: M8 bolt or 8mm steel rod, with an axle spacer between wheel and frame. Tyre: slit a piece of 1/2in garden hose (or old bike tyre) and stretch it into the rim channel, then wire or zip-tie the ends together through a spoke hole. Typical load ~25kg per wheel; use 4 wheels and keep loads low and centred.",
+  "source": "prints/src/cart_wheel.scad",
+  "files": [
+   {
+    "name": "180mm",
+    "stl": "prints/stl/cart_wheel_180mm.stl",
+    "bytes": 385284
+   },
+   {
+    "name": "125mm",
+    "stl": "prints/stl/cart_wheel_125mm.stl",
+    "bytes": 385284
+   }
+  ]
+ },
+ {
+  "id": "tube_connectors",
+  "title": "Tube Frame Connectors (PVC / conduit / poles)",
+  "category": "Transport",
+  "material": "PETG or ABS, 5 perimeters, 40% infill",
+  "print": "Flat, no supports (horizontal sockets use teardrop bores)",
+  "summary": "Tee, elbow, cross, 3-way corner and 4-way side-outlet connectors for building cart frames, stretchers, greenhouse/shelter frames, drying racks, and bed frames from PVC pipe, electrical conduit, bamboo or straight poles.",
+  "use": "Push tubes in fully; drill through each pin hole into the tube and fit a screw, nail or bolt so joints can't pull apart. 21.3mm = 1/2in PVC Sch.40; 26.7mm = 3/4in PVC. Change tube_od in the .scad file for other sizes (measure with a ruler: +0.4mm clearance is added).",
+  "source": "prints/src/tube_connectors.scad",
+  "files": [
+   {
+    "name": "tee 21.3",
+    "stl": "prints/stl/tube_connectors_tee-21-3.stl",
+    "bytes": 112484
+   },
+   {
+    "name": "elbow 21.3",
+    "stl": "prints/stl/tube_connectors_elbow-21-3.stl",
+    "bytes": 75084
+   },
+   {
+    "name": "cross 21.3",
+    "stl": "prints/stl/tube_connectors_cross-21-3.stl",
+    "bytes": 150284
+   },
+   {
+    "name": "corner3 21.3",
+    "stl": "prints/stl/tube_connectors_corner3-21-3.stl",
+    "bytes": 115984
+   },
+   {
+    "name": "sidetee 21.3",
+    "stl": "prints/stl/tube_connectors_sidetee-21-3.stl",
+    "bytes": 153484
+   },
+   {
+    "name": "tee 26.7",
+    "stl": "prints/stl/tube_connectors_tee-26-7.stl",
+    "bytes": 111284
+   },
+   {
+    "name": "elbow 26.7",
+    "stl": "prints/stl/tube_connectors_elbow-26-7.stl",
+    "bytes": 74284
+   },
+   {
+    "name": "cross 26.7",
+    "stl": "prints/stl/tube_connectors_cross-26-7.stl",
+    "bytes": 148684
+   },
+   {
+    "name": "corner3 26.7",
+    "stl": "prints/stl/tube_connectors_corner3-26-7.stl",
+    "bytes": 114384
+   },
+   {
+    "name": "sidetee 26.7",
+    "stl": "prints/stl/tube_connectors_sidetee-26-7.stl",
+    "bytes": 151484
+   }
+  ]
+ },
+ {
+  "id": "filter_cartridge",
+  "title": "Bucket Gravity Filter Cartridge",
+  "category": "Water",
+  "material": "PETG (food-safe grade if possible)",
+  "print": "Grate down, flange up, 3 perimeters, no supports",
+  "summary": "A slotted-bottom tube that hangs in a 92mm hole cut in a bucket lid. Fill with layers of cloth, fine sand, crushed charcoal and gravel to clarify water before disinfecting it.",
+  "use": "Cut a 92mm hole in a bucket lid; the flange rests on it. Bottom to top: 2 layers of cloth over the grate, 3cm fine gravel, 5cm crushed charcoal (not ash), 5cm fine sand, cloth. Pour water in slowly. IMPORTANT: this removes dirt and some taste, it does NOT make water safe. Always boil, bleach or SODIS afterwards (see Water > Disinfection).",
+  "source": "prints/src/filter_cartridge.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/filter_cartridge.stl",
+    "bytes": 151284
+   }
+  ]
+ },
+ {
+  "id": "funnel",
+  "title": "Funnel (with air-vent groove)",
+  "category": "Water",
+  "material": "PETG (food-safe grade if possible) or PLA",
+  "print": "Wide rim down, 3 perimeters, no supports",
+  "summary": "120mm funnel for decanting water, fuel and grain. The groove on the spout lets air escape so bottles fill without glugging.",
+  "use": "Keep a separate funnel for fuel/chemicals and mark it. FDM prints have tiny crevices - for drinking water, sanitize with a bleach rinse before use.",
+  "source": "prints/src/funnel.scad",
+  "files": [
+   {
+    "name": "default",
+    "stl": "prints/stl/funnel.stl",
+    "bytes": 165284
+   }
+  ]
+ },
+ {
+  "id": "hose_barb",
+  "title": "Hose Barb Connectors",
+  "category": "Water",
+  "material": "PETG or ABS, 100% infill",
+  "print": "Straight: upright. Tee: on its side with supports off (small overhangs).",
+  "summary": "Join or split flexible tubing for gravity water systems, rain-catchment, siphons and drip irrigation.",
+  "use": "Warm the tubing in hot water, push it over all three barbs, secure with wire or a hose clamp. Low pressure only (gravity / siphon).",
+  "source": "prints/src/hose_barb.scad",
+  "files": [
+   {
+    "name": "10mm straight",
+    "stl": "prints/stl/hose_barb_10mm-straight.stl",
+    "bytes": 76884
+   },
+   {
+    "name": "13mm (1/2in) straight",
+    "stl": "prints/stl/hose_barb_13mm-1-2in-straight.stl",
+    "bytes": 86484
+   },
+   {
+    "name": "10mm tee",
+    "stl": "prints/stl/hose_barb_10mm-tee.stl",
+    "bytes": 151084
+   },
+   {
+    "name": "13mm (1/2in) tee",
+    "stl": "prints/stl/hose_barb_13mm-1-2in-tee.stl",
+    "bytes": 161084
+   }
+  ]
+ }
+]
