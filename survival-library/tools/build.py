@@ -231,6 +231,9 @@ def md_to_html(md):
             in_code = not in_code
         elif in_code:
             out.append(html.escape(line))
+        elif re.match(r"^(-{3,}|\*{3,}|_{3,})\s*$", line):
+            flush()
+            out.append("<hr>")
         elif re.match(r"^#{1,4} ", line):
             flush()
             n = len(line) - len(line.lstrip("#"))

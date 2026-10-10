@@ -41,7 +41,10 @@
         inCode = !inCode; continue;
       }
       if (inCode) { code.push(line); continue; }
-      if ((m = /^(#{1,4}) (.*)$/.exec(line))) {
+      if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+        flush();
+        out.push("<hr>");
+      } else if ((m = /^(#{1,4}) (.*)$/.exec(line))) {
         flush();
         var n = m[1].length + 1, h = inline(m[2]);
         out.push("<h" + n + ' id="' + slug(h) + '">' + h + "</h" + n + ">");

@@ -228,3 +228,5 @@ dl.specs dd { margin: 2px 0 0; }
   .topbar, .tabs, .foot, .btn-row, .article-nav { display: none !important; }
   body { background: #fff; color: #000; }
 }
+
+.article hr { border: 0; border-top: 1px solid var(--border); margin: 26px 0; }

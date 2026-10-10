@@ -50,6 +50,10 @@ Fine steel wool (#0000 is best) touched across **both terminals** of a 9V batter
 
 Keep steel wool away from batteries in your pack.
 
+## 8. Sparks from a bow drill set, flint, or a hand-cranked generator
+
+See *Friction Fire* for bow and hand drills. Any dynamo, alternator or motor spun fast enough will throw sparks across a gap or heat a fine wire red-hot — a bicycle dynamo onto steel wool lights it instantly.
+
 ## 6. Friction (bow drill, hand drill)
 
 Possible with no tools at all, but hard work and needs practice and dry materials. See *Friction Fire*.
