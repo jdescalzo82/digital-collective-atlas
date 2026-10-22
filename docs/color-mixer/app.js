@@ -31,9 +31,22 @@ const S = {
   mode: 'pick',
   image: null, // ImageData of the photo
 };
+// What follows the person between devices when they're signed in.
+const SYNCED = ['medium', 'grade', 'finish', 'owned', 'overrides', 'custom'];
+const syncedSettings = () => Object.fromEntries(SYNCED.map((k) => [k, S[k]]));
+let lastSynced = null, syncTimer = null;
 const persist = () => {
   const { medium, grade, finish, owned, overrides, custom, colors, active } = S;
   try { localStorage.setItem(PREFS_KEY, JSON.stringify({ medium, grade, finish, owned, overrides, custom, colors, active })); } catch { /* ignore */ }
+  if (!account.user) return;
+  const json = JSON.stringify(syncedSettings());
+  if (json === lastSynced) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    account.settings.save(JSON.parse(json))
+      .then(() => { lastSynced = json; })
+      .catch((e) => console.warn('[pigment-lens] settings sync failed', e));
+  }, 1200);
 };
 
 function toast(msg) {
@@ -471,7 +484,28 @@ $('#account-btn').addEventListener('click', () => {
   if (!account.user) return account.signIn();
   if (confirm(`Sign out of Toolkit Your Life (${account.user.email || account.user.name})?`)) account.signOut();
 });
-account.onChange(() => { renderAccount(); renderSaved(); });
+account.onChange(async (user) => {
+  renderAccount();
+  renderSaved();
+  if (!user) { lastSynced = null; return; }
+  // Signed in: take the account's paints if it has them, otherwise upload this device's.
+  try {
+    const cloud = await account.settings.load();
+    if (cloud) {
+      for (const k of SYNCED) if (cloud[k] !== undefined) S[k] = cloud[k];
+      for (const m of Object.keys(DEFAULT_OWNED)) if (!S.owned[m]) S.owned[m] = [...DEFAULT_OWNED[m]];
+      lastSynced = JSON.stringify(syncedSettings());
+      cache.clear();
+      persist();
+      renderSettings();
+      renderRecipe();
+    } else {
+      persist();
+    }
+  } catch (e) {
+    console.warn('[pigment-lens] settings load failed', e);
+  }
+});
 
 async function renderSaved() {
   let list = [];

@@ -30,7 +30,9 @@ Accuracy limits: the model uses typical tube colors, and brands vary. Users can 
 
 Pigment Lens uses the site's shared sign-in script, `/tyl-auth.js` (Firebase Auth, project `toolkityourlife`). People sign in once anywhere on toolkityourlife.com and are signed in here too. The header button opens the same sign-in window the rest of the site uses.
 
-Palettes are saved to Cloud Firestore, laid out the same way as StreamSaver: one document per person at `pigmentlens/<user id>` holding `{ data, version, updated }`. Palettes someone saved as a guest move into their account the first time they sign in.
+Palettes are saved to Cloud Firestore, laid out the same way as StreamSaver: one document per person at `pigmentlens/<user id>` holding `{ data, version, updated }` for palettes. Palettes someone saved as a guest move into their account the first time they sign in.
+
+The same document also stores each person's paint settings in a `settings` field: which paints they own, any swatch color corrections, custom paints, and their medium, grade and finish. These follow them to any device they sign in on. The first time someone signs in, the account adopts the device's settings. After that, the account's settings load on every device, and changes save automatically.
 
 Away from toolkityourlife.com, for example when testing locally, `/tyl-auth.js` isn't available. The app then runs in guest mode and saves palettes in the browser.
 

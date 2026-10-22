@@ -10,6 +10,8 @@
 //   account.palettes.list()       -> [{ id, name, medium, colors, createdAt }]
 //   account.palettes.save(p)      -> saved palette (with id)
 //   account.palettes.remove(id)
+//   account.settings.load()       -> saved paint settings | null (signed in only)
+//   account.settings.save(obj)    -> stores paint settings with the account
 
 import { CONFIG } from './config.js';
 
@@ -36,6 +38,7 @@ function localProvider() {
     signIn() {},
     signOut() {},
     palettes: localPalettes,
+    settings: { async load() { return null; }, async save() {} },
   };
 }
 
@@ -73,6 +76,19 @@ function toolkitProvider(notify) {
       save: (p) => (self.user ? cloudUpdate((list) => { const s = stamp(p); return [s, ...list.filter((x) => x.id !== s.id)]; }) : localPalettes.save(p)),
       remove: (id) => (self.user ? cloudUpdate((list) => list.filter((x) => x.id !== id)) : localPalettes.remove(id)),
     },
+    // Paints owned, color corrections and custom paints: one JSON field in
+    // the same document. Last save wins, which is fine for preferences.
+    settings: {
+      async load() {
+        if (!self.user) return null;
+        const snap = await fs.getDoc(ref());
+        return snap.exists() && snap.data().settings ? JSON.parse(snap.data().settings) : null;
+      },
+      async save(obj) {
+        if (!self.user) return;
+        await fs.setDoc(ref(), { settings: JSON.stringify(obj), settingsUpdated: fs.serverTimestamp() }, { merge: true });
+      },
+    },
   };
 
   const ref = () => fs.doc(db, CONFIG.firebaseCollection, self.user.id);
@@ -86,7 +102,7 @@ function toolkitProvider(notify) {
       const next = change(parse(snap));
       const data = JSON.stringify(next);
       if (data.length > 900000) throw new Error('Too many palettes to save. Delete a few and try again.');
-      t.set(ref(), { data, version: version + 1, updated: fs.serverTimestamp() });
+      t.set(ref(), { data, version: version + 1, updated: fs.serverTimestamp() }, { merge: true }); // keep settings
       return next;
     });
   }
@@ -112,4 +128,5 @@ export const account = {
   signIn: () => impl.signIn(),
   signOut: () => impl.signOut(),
   palettes: impl.palettes,
+  settings: impl.settings,
 };
