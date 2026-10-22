@@ -26,9 +26,25 @@ Run the tests with `node docs/color-mixer/test/mixer.test.mjs`.
 
 Accuracy limits: the model uses typical tube colors, and brands vary. Users can correct each swatch or add their own paint by photographing a swatch card. Phone cameras and screens add their own error, so the app always recommends a dried test swatch.
 
-## Connecting to Toolkit Your Life login
+## Toolkit Your Life login and saving
 
-The app runs standalone in guest mode, with palettes saved in the browser. To share Toolkit Your Life's accounts:
+Pigment Lens uses the site's shared sign-in script, `/tyl-auth.js` (Firebase Auth, project `toolkityourlife`). People sign in once anywhere on toolkityourlife.com and are signed in here too. The header button opens the same sign-in window the rest of the site uses.
 
-- **Shared session cookie and JSON API:** in `config.js` set `provider: 'toolkit'`, then fill in `loginUrl` and `apiBase`. The app expects `GET /me`, plus `GET/POST /color-mixer/palettes` and `DELETE /color-mixer/palettes/:id`.
-- **Auth SDK (Firebase, Supabase, Clerk…):** replace `toolkitProvider` in `account.js` with calls to the same SDK Toolkit Your Life uses. Nothing else in the app needs to change.
+Palettes are saved to Cloud Firestore, laid out the same way as StreamSaver: one document per person at `pigmentlens/<user id>` holding `{ data, version, updated }`. Palettes someone saved as a guest move into their account the first time they sign in.
+
+Away from toolkityourlife.com, for example when testing locally, `/tyl-auth.js` isn't available. The app then runs in guest mode and saves palettes in the browser.
+
+### Deploying
+1. Upload the contents of this folder (everything except `test/`) to `/PigmentLens/` on toolkityourlife.com, so the app is at `https://www.toolkityourlife.com/PigmentLens/`.
+2. In the Firebase console, go to Firestore Database → Rules and add this inside `match /databases/{database}/documents { … }`, next to the StreamSaver rule:
+   ```
+   match /pigmentlens/{userId} {
+     allow read, write: if request.auth != null && request.auth.uid == userId;
+   }
+   ```
+3. Add Pigment Lens to the app list on the homepage:
+   ```js
+   { name: "Pigment Lens", desc: "Photograph a color and get the paint recipe to mix it", href: "/PigmentLens/" }
+   ```
+
+Settings live in `config.js`. All sign-in and storage code is in `account.js`.

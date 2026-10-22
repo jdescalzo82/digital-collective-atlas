@@ -463,10 +463,14 @@ $('#add-custom').addEventListener('click', () => {
 // ---------- account + saved palettes ----------
 function renderAccount() {
   const btn = $('#account-btn');
+  btn.hidden = !account.connected;
   btn.textContent = account.user ? (account.user.name || account.user.email || 'Account') : 'Sign in';
   btn.title = account.user ? 'Signed in with Toolkit Your Life. Click to sign out.' : 'Sign in with your Toolkit Your Life account';
 }
-$('#account-btn').addEventListener('click', () => (account.user ? account.signOut() : account.signIn()));
+$('#account-btn').addEventListener('click', () => {
+  if (!account.user) return account.signIn();
+  if (confirm(`Sign out of Toolkit Your Life (${account.user.email || account.user.name})?`)) account.signOut();
+});
 account.onChange(() => { renderAccount(); renderSaved(); });
 
 async function renderSaved() {
@@ -507,10 +511,14 @@ $('#save-btn').addEventListener('click', async () => {
   });
   try {
     await account.palettes.save({ name, medium: S.medium, finish: S.finish, colors });
-    toast(account.user ? 'Saved to your Toolkit Your Life account.' : 'Saved in this browser. Sign in to sync it to your account.');
+    toast(account.user ? 'Saved to your Toolkit Your Life account.'
+      : account.connected ? 'Saved in this browser. Sign in to keep it in your account.' : 'Saved in this browser.');
     renderSaved();
-  } catch {
-    toast('Couldn’t save. Check your connection and try again.');
+  } catch (e) {
+    console.warn('[pigment-lens] save failed', e);
+    toast(e?.code === 'permission-denied'
+      ? 'Saving is blocked by the Firestore security rules. The Pigment Lens rule needs adding.'
+      : 'Couldn’t save. Check your connection and try again.');
   }
 });
 
@@ -519,4 +527,4 @@ renderSettings();
 renderSelected();
 renderRecipe();
 renderAccount();
-account.init().catch(() => {}).finally(renderSaved);
+account.init().catch((e) => console.warn('[pigment-lens] sign-in unavailable', e)).finally(() => { renderAccount(); renderSaved(); });

@@ -192,3 +192,8 @@ dialog::backdrop { background: rgba(20, 15, 10, 0.45); }
   opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; max-width: calc(100% - 32px);
 }
 .toast.show { opacity: 1; transform: translateX(-50%); }
+
+/* Toolkit Your Life's shared sign-in (/tyl-auth.js): keep its sign-in window,
+   hide its floating account pill. The header button does that job here. */
+.tyl-account { display: none !important; }
+[hidden] { display: none !important; }

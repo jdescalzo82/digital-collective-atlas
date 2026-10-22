@@ -4,6 +4,7 @@
 // Interface:
 //   await account.init()          -> resolves once the session is known
 //   account.user                  -> { id, name, email } | null (guest)
+//   account.connected             -> true when Toolkit Your Life sign-in is available
 //   account.onChange(fn)          -> fn(user) on sign-in/out
 //   account.signIn() / signOut()
 //   account.palettes.list()       -> [{ id, name, medium, colors, createdAt }]
@@ -15,11 +16,12 @@ import { CONFIG } from './config.js';
 const LS_KEY = 'pigment-lens:palettes';
 const read = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } };
 const write = (v) => { try { localStorage.setItem(LS_KEY, JSON.stringify(v)); } catch { /* storage blocked */ } };
+const stamp = (p) => ({ ...p, id: p.id || crypto.randomUUID(), createdAt: p.createdAt || new Date().toISOString() });
 
 const localPalettes = {
   async list() { return read(); },
   async save(p) {
-    const saved = { ...p, id: p.id || crypto.randomUUID(), createdAt: p.createdAt || new Date().toISOString() };
+    const saved = stamp(p);
     write([saved, ...read().filter((x) => x.id !== saved.id)]);
     return saved;
   },
@@ -31,46 +33,81 @@ function localProvider() {
     user: null,
     connected: false,
     async init() {},
-    signIn() {
-      alert('Toolkit Your Life sign-in isn’t connected yet. Your palettes are saved in this browser for now.');
-    },
+    signIn() {},
     signOut() {},
     palettes: localPalettes,
   };
 }
 
-// Shared-session provider: assumes Toolkit Your Life serves this app on the
-// same site and exposes a session cookie plus a small JSON API.
-function toolkitProvider({ loginUrl, logoutUrl, apiBase }) {
-  const api = (path, opts = {}) => fetch(apiBase + path, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...opts,
-  }).then((r) => { if (!r.ok) throw new Error(`${r.status} ${path}`); return r.status === 204 ? null : r.json(); });
+// Toolkit Your Life: shared Firebase sign-in from /tyl-auth.js (window.tylAuth)
+// and one Firestore document per person holding all their palettes.
+function toolkitProvider(notify) {
+  let tyl = null, db = null, fs = null;
   const self = {
     user: null,
-    connected: true,
+    connected: false,
     async init() {
-      try { self.user = await api('/me'); } catch { self.user = null; }
+      try {
+        await import(CONFIG.authScript);
+      } catch {
+        return; // not on toolkityourlife.com: stay in guest mode
+      }
+      tyl = window.tylAuth;
+      if (!tyl) return;
+      fs = await import(`https://www.gstatic.com/firebasejs/${CONFIG.firebaseVersion}/firebase-firestore.js`);
+      db = fs.getFirestore(tyl.auth.app);
+      self.connected = true;
+      await tyl.ready;
+      let first = true;
+      tyl.onChange(async (u) => {
+        self.user = u ? { id: u.uid, name: u.displayName, email: u.email } : null;
+        if (self.user) await moveGuestPalettes().catch((e) => console.warn('[pigment-lens] sync', e));
+        if (!first || self.user) notify(self.user);
+        first = false;
+      });
     },
-    signIn() { location.href = loginUrl + encodeURIComponent(location.href); },
-    signOut() { location.href = logoutUrl || loginUrl; },
+    signIn() { tyl?.open(); },
+    signOut() { tyl?.signOut(); },
     palettes: {
-      list: () => (self.user ? api('/color-mixer/palettes') : localPalettes.list()),
-      save: (p) => (self.user ? api('/color-mixer/palettes', { method: 'POST', body: JSON.stringify(p) }) : localPalettes.save(p)),
-      remove: (id) => (self.user ? api(`/color-mixer/palettes/${encodeURIComponent(id)}`, { method: 'DELETE' }) : localPalettes.remove(id)),
+      list: () => (self.user ? cloudList() : localPalettes.list()),
+      save: (p) => (self.user ? cloudUpdate((list) => { const s = stamp(p); return [s, ...list.filter((x) => x.id !== s.id)]; }) : localPalettes.save(p)),
+      remove: (id) => (self.user ? cloudUpdate((list) => list.filter((x) => x.id !== id)) : localPalettes.remove(id)),
     },
   };
+
+  const ref = () => fs.doc(db, CONFIG.firebaseCollection, self.user.id);
+  const parse = (snap) => (snap.exists() ? JSON.parse(snap.data().data || '[]') : []);
+  async function cloudList() { return parse(await fs.getDoc(ref())); }
+  // Read-modify-write in a transaction so two devices can't overwrite each other.
+  function cloudUpdate(change) {
+    return fs.runTransaction(db, async (t) => {
+      const snap = await t.get(ref());
+      const version = snap.exists() ? snap.data().version || 0 : 0;
+      const next = change(parse(snap));
+      const data = JSON.stringify(next);
+      if (data.length > 900000) throw new Error('Too many palettes to save. Delete a few and try again.');
+      t.set(ref(), { data, version: version + 1, updated: fs.serverTimestamp() });
+      return next;
+    });
+  }
+  // Palettes saved as a guest move into the account the first time someone signs in.
+  async function moveGuestPalettes() {
+    const guest = read();
+    if (!guest.length) return;
+    await cloudUpdate((list) => [...guest.filter((g) => !list.some((x) => x.id === g.id)), ...list]);
+    write([]);
+  }
   return self;
 }
 
-const impl = CONFIG.provider === 'toolkit' ? toolkitProvider(CONFIG.toolkit) : localProvider();
 const listeners = new Set();
+const notify = (user) => listeners.forEach((fn) => fn(user));
+const impl = CONFIG.provider === 'toolkit' ? toolkitProvider(notify) : localProvider();
 
 export const account = {
   get user() { return impl.user; },
   get connected() { return impl.connected; },
-  async init() { await impl.init(); listeners.forEach((fn) => fn(impl.user)); },
+  async init() { await impl.init(); notify(impl.user); },
   onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   signIn: () => impl.signIn(),
   signOut: () => impl.signOut(),

@@ -1,15 +1,14 @@
 // Connection to the shared Toolkit Your Life account system.
 //
-// Leave `provider: 'local'` to run standalone (guest mode, palettes saved in
-// this browser). To share Toolkit Your Life's login, set provider to 'toolkit'
-// and fill in the endpoints, or replace the 'toolkit' provider in account.js
-// with Toolkit's own auth SDK (Firebase, Supabase, etc.).
+// On www.toolkityourlife.com the app loads the site's shared sign-in script
+// (/tyl-auth.js) and saves palettes to Firestore, one document per person:
+// <firebaseCollection>/<user id>, the same layout StreamSaver uses.
+// Anywhere else (local testing, other hosts) that script isn't there, and the app
+// falls back to guest mode with palettes saved in the browser.
 export const CONFIG = {
   appName: 'Pigment Lens',
-  provider: 'local',
-  toolkit: {
-    loginUrl: null,    // e.g. 'https://toolkityourlife.com/login?next=' — current URL is appended
-    logoutUrl: null,
-    apiBase: null,     // e.g. 'https://toolkityourlife.com/api' — must accept the shared session cookie
-  },
+  provider: 'toolkit',            // 'toolkit' | 'local'
+  authScript: '/tyl-auth.js',
+  firebaseVersion: '12.19.0',     // must match the version /tyl-auth.js imports
+  firebaseCollection: 'pigmentlens',
 };
