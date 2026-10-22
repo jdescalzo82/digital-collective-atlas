@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Pigment Lens: Color Mixing for Artists</title>
+  <meta name="description" content="Photograph anything, pick colors from it, and get paint-mixing recipes for oil, acrylic, gouache and watercolor, with drying and finish notes." />
+  <meta name="theme-color" content="#f6f1e9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1b1916" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%23b5512a%22/%3E%3Ccircle cx=%2211%22 cy=%2212%22 r=%223%22 fill=%22%23fbb800%22/%3E%3Ccircle cx=%2219%22 cy=%2210%22 r=%223%22 fill=%22%232b3593%22/%3E%3Ccircle cx=%2222%22 cy=%2218%22 r=%223%22 fill=%22%234b6a24%22/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="app.css" />
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Pigment Lens</span>
+      <small class="suite">Toolkit Your Life</small>
+    </div>
+    <button id="account-btn" class="chip ghost" type="button">Sign in</button>
+  </header>
+
+  <main>
+    <!-- 1. PHOTO -->
+    <section class="card" id="photo-card">
+      <div class="card-head">
+        <h2><span class="step">1</span> Photograph your reference</h2>
+      </div>
+      <div class="actions">
+        <label class="btn primary">
+          <input id="camera-input" type="file" accept="image/*" capture="environment" hidden />
+          Take photo
+        </label>
+        <label class="btn">
+          <input id="upload-input" type="file" accept="image/*" hidden />
+          Upload image
+        </label>
+        <label class="btn subtle hex-entry">
+          <span>or enter a color</span>
+          <input id="hex-input" type="color" value="#7a9a6b" aria-label="Pick a color manually" />
+        </label>
+      </div>
+
+      <div id="stage" class="stage empty">
+        <canvas id="photo" aria-label="Your photo. Tap to sample a color."></canvas>
+        <div id="marker" class="marker" hidden></div>
+        <p class="placeholder">Your photo appears here. Tap anywhere on it to pick a color.</p>
+      </div>
+
+      <div id="photo-tools" class="tools" hidden>
+        <div class="seg" role="group" aria-label="Tap mode">
+          <button type="button" class="seg-btn on" data-mode="pick">Pick colors</button>
+          <button type="button" class="seg-btn" data-mode="white">Set white point</button>
+        </div>
+        <label class="inline">Sample size
+          <select id="radius">
+            <option value="0">1 px</option>
+            <option value="2" selected>5 px</option>
+            <option value="5">11 px</option>
+            <option value="10">21 px</option>
+          </select>
+        </label>
+        <span id="wb-status" class="muted small"></span>
+      </div>
+      <p id="mode-hint" class="hint" hidden>Tap something white or neutral grey in the photo, such as paper or a grey card. The app removes the color cast from your lighting so every sample is more accurate.</p>
+
+      <div id="auto-palette" class="auto" hidden>
+        <h3>Main colors in this photo</h3>
+        <div id="auto-swatches" class="swatch-row"></div>
+      </div>
+    </section>
+
+    <!-- 2. SELECTED COLORS -->
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="step">2</span> Your colors</h2>
+        <button id="save-btn" class="chip" type="button" disabled>Save palette</button>
+      </div>
+      <div id="selected" class="selected">
+        <p class="muted">No colors yet. Tap the photo, or tap one of the suggested colors above.</p>
+      </div>
+    </section>
+
+    <!-- 3. PAINTS -->
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="step">3</span> What you paint with</h2>
+        <button id="paints-btn" class="chip" type="button">My paints</button>
+      </div>
+      <div class="settings">
+        <label>Medium
+          <select id="medium">
+            <option value="oil">Oil</option>
+            <option value="acrylic">Acrylic</option>
+            <option value="gouache">Gouache</option>
+            <option value="watercolor">Watercolor</option>
+          </select>
+        </label>
+        <label id="grade-wrap">Paint grade
+          <select id="grade">
+            <option value="artist">Artist grade</option>
+            <option value="student">Student grade</option>
+          </select>
+        </label>
+        <label>Final finish
+          <select id="finish">
+            <option value="gloss">Gloss / gloss varnish</option>
+            <option value="satin">Satin</option>
+            <option value="matte">Matte / matte varnish</option>
+          </select>
+        </label>
+      </div>
+      <p id="paints-summary" class="muted small"></p>
+    </section>
+
+    <!-- 4. RECIPE -->
+    <section class="card" id="recipe-card" hidden>
+      <div class="card-head">
+        <h2><span class="step">4</span> How to mix it</h2>
+      </div>
+      <div id="recipe"></div>
+    </section>
+
+    <section class="card" id="saved-card" hidden>
+      <div class="card-head"><h2>Saved palettes</h2></div>
+      <div id="saved"></div>
+    </section>
+
+    <p class="foot muted small">
+      Colors from photos depend on your camera and lighting. For the best results, shoot in daylight
+      without flash or filters, and set the white point. Recipes come from a Kubelka–Munk paint-mixing
+      model using typical tube colors, and brands vary, so always test a dried swatch next to your reference.
+    </p>
+  </main>
+
+  <dialog id="paints-dialog">
+    <form method="dialog" class="dlg">
+      <header class="dlg-head">
+        <h2>My paints, <span id="dlg-medium"></span></h2>
+        <button class="chip ghost" value="close" aria-label="Close">Done</button>
+      </header>
+      <p class="muted small">Tick the paints you own, and recipes will only use those. If your brand looks different,
+        tap a swatch to correct its color. For the best accuracy, photograph your own swatch card, tap a
+        swatch, and add it as a custom paint.</p>
+      <div id="paint-list" class="paint-list"></div>
+      <div class="dlg-foot">
+        <button type="button" id="add-custom" class="btn">Add selected color as a custom paint</button>
+        <button type="button" id="reset-paints" class="btn subtle">Reset to defaults</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
