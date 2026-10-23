@@ -13,7 +13,7 @@ before(async () => {
   seedDemo(db);
   server = createApp(db).listen(0);
   base = `http://127.0.0.1:${server.address().port}`;
-  for (const u of ['admin', 'maya', 'sam', 'jo', 'leo', 'rae', 'hr', 'it']) {
+  for (const u of ['admin', 'maya', 'sam', 'jo', 'leo', 'rae', 'hr', 'it', 'kai']) {
     const r = await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: u === 'admin' ? 'admin' : 'password' }) });
     tokens[u] = (await r.json()).token;
   }
@@ -203,4 +203,66 @@ test('HR releases to IT; scan finds items; CSV import', async () => {
   const res = await api('admin', 'POST', '/import/commit', { entity: 'clients', records: [...records, records[0]] });
   assert.equal(res.imported, 2);
   assert.equal(res.results[2].ok, false);
+});
+
+test('time follows the assignee, keeps their position, and rolls up by position and by person', async () => {
+  const hh = helpers(db);
+  const acct = (await api('admin', 'GET', '/accounts')).find((a) => a.billing_code === 'STRM-ED-0001');
+  const jo = await personId('Jo');
+  const kai = await personId('Kai');
+  const t = await api('sam', 'POST', '/tickets', { board: 'ae', title: 'Screeners for press', category: 'Screeners', account_id: acct.id });
+  await api('sam', 'POST', `/tickets/${t.id}/assign`, { personnel_id: jo });
+  await api('jo', 'POST', `/tickets/${t.id}/status`, { status: 'In Progress' });
+  // pretend Jo has been working for 2 hours
+  hh.run("UPDATE time_entries SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 hours') WHERE ticket_id = ? AND ended_at IS NULL", t.id);
+  // reassigned mid-clock: Jo's entry closes, Kai's opens
+  await api('sam', 'POST', `/tickets/${t.id}/assign`, { personnel_id: kai });
+  hh.run("UPDATE time_entries SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hours') WHERE ticket_id = ? AND ended_at IS NULL", t.id);
+  await api('kai', 'POST', `/tickets/${t.id}/status`, { status: 'Completed' });
+
+  const entries = (await api('sam', 'GET', `/tickets/${t.id}`)).time;
+  assert.deepEqual(entries.map((e) => [e.personnel_id, e.position]).sort(), [[jo, 'Assistant Editor'], [kai, 'PA']].sort());
+
+  // A later promotion doesn't rewrite history.
+  await api('hr', 'PATCH', `/personnel/${kai}`, { position: 'Assistant Editor' });
+  const summary = await api('maya', 'GET', `/time/summary?project_id=${acct.project_id}`);
+  const pos = Object.fromEntries(summary.by_position.map((r) => [r.position, r.seconds]));
+  assert.ok(pos['Assistant Editor'] >= 7190 && pos['Assistant Editor'] <= 7300, `AE ~2h, got ${pos['Assistant Editor']}`);
+  assert.ok(pos.PA >= 3590 && pos.PA <= 3700, `PA ~1h, got ${pos.PA}`);
+  assert.ok(summary.by_person.some((r) => r.personnel_id === kai && r.position === 'PA'));
+  assert.ok(summary.by_account.some((r) => r.billing_code === 'STRM-ED-0001'));
+  // Regular staff get position totals but not per-person hours.
+  assert.equal((await api('jo', 'GET', `/time/summary?project_id=${acct.project_id}`)).by_person, undefined);
+
+  // Time cards: your own always, others only with access.
+  const mine = await api('jo', 'GET', '/timecard');
+  assert.ok(mine.entries.some((e) => e.ticket_id === t.id && e.billing_code === 'STRM-ED-0001'));
+  await assert.rejects(api('jo', 'GET', `/timecard?personnel_id=${kai}`), /own time card/);
+  const kaiCard = await api('hr', 'GET', `/timecard?personnel_id=${kai}`);
+  assert.equal(kaiCard.entries.filter((e) => e.ticket_id === t.id).length, 1);
+  assert.equal(kaiCard.person.position, 'Assistant Editor');
+  assert.equal(kaiCard.entries.find((e) => e.ticket_id === t.id).position, 'PA');
+});
+
+test('migration adds position columns to an older database', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'portal-'));
+  const file = path.join(dir, 'old.db');
+  const old = new DatabaseSync(file);
+  old.exec(`CREATE TABLE personnel (id INTEGER PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL DEFAULT '');
+    CREATE TABLE time_entries (id INTEGER PRIMARY KEY, ticket_id INTEGER NOT NULL, personnel_id INTEGER, track TEXT NOT NULL DEFAULT 'main',
+      started_at TEXT NOT NULL, ended_at TEXT, manual INTEGER NOT NULL DEFAULT 0, note TEXT, created_by INTEGER, updated_at TEXT);
+    INSERT INTO personnel (id, first_name) VALUES (1, 'Old');
+    INSERT INTO time_entries (ticket_id, personnel_id, started_at) VALUES (1, 1, '2026-01-01T10:00:00Z');`);
+  old.close();
+  const upgraded = openDb(file);
+  const cols = (t) => upgraded.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+  assert.ok(cols('personnel').includes('position'));
+  assert.ok(cols('time_entries').includes('position'));
+  assert.equal(upgraded.prepare('SELECT COUNT(*) AS n FROM time_entries').get().n, 1, 'existing time kept');
+  upgraded.close();
+  fs.rmSync(dir, { recursive: true, force: true });
 });

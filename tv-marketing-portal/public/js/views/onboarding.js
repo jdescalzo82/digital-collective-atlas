@@ -6,6 +6,7 @@ import {
   personOptions, clientOptions, projectOptions, toast,
 } from '../ui.js';
 import { refreshLookup } from '../app.js';
+import { timeSummaryCard } from './timecard.js';
 
 const editable = () => can('onboarding');
 const go = (hash) => { location.hash = hash; };
@@ -51,6 +52,7 @@ export async function personnelList(main) {
     columns: [
       { label: 'Name', render: (r) => h('b', {}, `${r.first_name} ${r.last_name}`) },
       { label: 'Title', key: 'title' },
+      { label: 'Position', key: 'position' },
       { label: 'Department', key: 'department' },
       { label: 'Type', key: 'employment_type' },
       ...(seesPay ? [{ label: 'Rate', render: (r) => (r.rate ? `${fmtMoney(r.rate)} / ${r.rate_frequency || '—'}` : '') }] : []),
@@ -79,6 +81,7 @@ export async function personnelDetail(main, id) {
     { name: 'emergency_name', label: 'Emergency contact' }, { name: 'emergency_phone', label: 'Emergency phone', type: 'tel' },
     { section: 'Role' },
     { name: 'title', label: 'Title / role', type: 'select', category: 'title' },
+    { name: 'position', label: 'Position (time reporting)', type: 'select', category: 'position', help: 'Hours are reported under this position (AE, Editor, PA…). Changing it only affects time logged from now on.' },
     { name: 'department', label: 'Department', type: 'select', category: 'department' },
     { name: 'employment_type', label: 'Staff or freelance', type: 'select', category: 'employment_type' },
     ...(seesPay ? [
@@ -115,6 +118,7 @@ export async function personnelDetail(main, id) {
         h('div', {}, h('b', {}, 'HR'), statusChip(p.hr_status)),
         h('div', {}, h('b', {}, 'IT setup'), statusChip(p.it_status)),
         h('div', {}, h('b', {}, 'Hours logged'), `${p.hours_logged} h`)),
+      h('p', {}, h('a', { href: `#/timecard/${p.id}` }, 'Open time card →')),
       can('hr') ? h('p', {}, h('a', { href: '#/hr' }, 'Open HR board →')) : null),
     h('div', { class: 'card' }, h('h2', {}, 'Assigned equipment'),
       p.equipment.length ? h('ul', {}, p.equipment.map((e) => h('li', {}, h('a', { href: `#/equipment/${e.id}` }, `${e.item_number} · ${e.name}`)))) : h('p', { class: 'muted' }, 'None')),
@@ -312,6 +316,7 @@ export async function projectDetail(main, id) {
       p.personnel.length ? h('div', { class: 'chips' }, p.personnel.map((x) => h('a', { class: 'chip blue', href: `#/personnel/${x.id}` }, x.name))) : h('p', { class: 'muted' }, 'Nobody linked yet — add projects on personnel records.'),
       h('h3', {}, 'Physical media'),
       p.media.length ? h('ul', {}, p.media.map((m) => h('li', {}, h('a', { href: `#/media/${m.id}` }, `${m.item_number} · ${m.name}`)))) : h('p', { class: 'muted' }, 'None'))));
+  main.append(await timeSummaryCard({ project_id: p.id }, 'Time on this project by position'));
   main.append(h('div', { class: 'card' }, h('div', { class: 'page-head' }, h('h2', {}, 'Tickets'),
     h('div', { class: 'actions' }, ['ae', 'editorial'].map((b) => h('a', { class: 'btn sm', href: `#/request/${b}?project=${p.id}` }, `+ ${b === 'ae' ? 'AE ticket' : 'Editor request'}`)))),
   table([

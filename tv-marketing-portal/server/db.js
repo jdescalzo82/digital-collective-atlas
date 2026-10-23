@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS personnel (
   address TEXT, city TEXT, state TEXT, zip TEXT,
   emergency_name TEXT, emergency_phone TEXT,
   title TEXT,
+  position TEXT,
   department TEXT,
   employment_type TEXT,
   rate REAL,
@@ -211,6 +212,8 @@ CREATE TABLE IF NOT EXISTS time_entries (
   ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
   personnel_id INTEGER REFERENCES personnel(id) ON DELETE SET NULL,
   track TEXT NOT NULL DEFAULT 'main',
+  -- Position held when the clock started (AE, Editor, PA…); kept even if the person's role changes later.
+  position TEXT,
   started_at TEXT NOT NULL,
   ended_at TEXT,
   manual INTEGER NOT NULL DEFAULT 0,
@@ -219,6 +222,7 @@ CREATE TABLE IF NOT EXISTS time_entries (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS time_ticket ON time_entries(ticket_id);
+CREATE INDEX IF NOT EXISTS time_person ON time_entries(personnel_id, started_at);
 
 CREATE TABLE IF NOT EXISTS history (
   id INTEGER PRIMARY KEY,
@@ -244,7 +248,18 @@ export function openDb(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+// Columns added after the first release; CREATE TABLE IF NOT EXISTS won't add them to existing databases.
+function migrate(db) {
+  const has = (table, col) => db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+  if (!has('personnel', 'position')) db.exec('ALTER TABLE personnel ADD COLUMN position TEXT');
+  if (!has('time_entries', 'position')) {
+    db.exec('ALTER TABLE time_entries ADD COLUMN position TEXT');
+    db.exec('UPDATE time_entries SET position = (SELECT position FROM personnel p WHERE p.id = time_entries.personnel_id) WHERE position IS NULL');
+  }
 }
 
 // Small helpers so route code stays readable.

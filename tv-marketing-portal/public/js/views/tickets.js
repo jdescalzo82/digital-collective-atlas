@@ -455,14 +455,15 @@ function timeLog(t, reload) {
     const f = form([
       { name: 'started_at', label: 'Start', type: 'datetime-local', required: true },
       { name: 'ended_at', label: 'End', type: 'datetime-local', required: true },
+      { name: 'position', label: 'Logged as (position)', type: 'select', category: 'position', help: 'Change if they were covering a different role.' },
       { name: 'note', label: 'Note', full: true },
-    ], { started_at: toLocalInput(e.started_at), ended_at: toLocalInput(e.ended_at), note: e.note });
+    ], { started_at: toLocalInput(e.started_at), ended_at: toLocalInput(e.ended_at), note: e.note, position: e.position });
     modal('Edit time entry', f.el, [
       { label: 'Delete', class: 'danger', onClick: () => attempt(async () => { await del(`/time/${e.id}`); reload(); }, 'Deleted') },
       { label: 'Cancel' },
       { label: 'Save', class: 'primary', onClick: () => attempt(async () => {
         const v = f.values();
-        await patch(`/time/${e.id}`, { started_at: new Date(v.started_at).toISOString(), ended_at: new Date(v.ended_at).toISOString(), note: v.note });
+        await patch(`/time/${e.id}`, { started_at: new Date(v.started_at).toISOString(), ended_at: new Date(v.ended_at).toISOString(), note: v.note, position: v.position });
         reload();
       }, 'Saved') },
     ]);
@@ -472,7 +473,7 @@ function timeLog(t, reload) {
       t.can.time && editableTracks.length ? h('div', { class: 'actions' }, h('button', { class: 'sm', onclick: add }, '+ Add time')) : null),
     t.can.time && !editableTracks.length ? h('p', { class: 'small muted' }, 'Manual edits unlock when the ticket is on hold or completed.') : null,
     table([
-      { label: 'Who', render: (e) => [e.person_name || '—', tracks.length > 1 ? h('div', { class: 'muted small' }, trackLabel[e.track]) : null] },
+      { label: 'Who', render: (e) => [e.person_name || '—', h('div', { class: 'muted small' }, [e.position || 'No position', tracks.length > 1 ? trackLabel[e.track] : null].filter(Boolean).join(' · '))] },
       { label: 'Start', render: (e) => fmtDateTime(e.started_at) },
       { label: 'Length', render: (e) => (e.ended_at ? fmtDuration(e.seconds) : [h('span', { class: 'dot' }), ' running']) },
       { label: '', render: (e) => [e.manual ? h('span', { class: 'chip amber', title: e.note || '' }, 'edited') : null,

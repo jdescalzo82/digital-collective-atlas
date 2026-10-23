@@ -41,6 +41,7 @@ export function createApp(db) {
   );
   const fin = (req) => svc.can(req.user, 'view_financials');
   const seesPay = (req) => svc.can(req.user, 'hr') || fin(req);
+  const seesTimecards = (req) => svc.can(req.user, 'timecards') || svc.can(req.user, 'hr') || fin(req);
 
   app.post('/api/login', (req, res) => {
     const { username, password } = req.body || {};
@@ -165,7 +166,7 @@ export function createApp(db) {
 
   // ---------- personnel ----------
   const PERSONNEL_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'mobile', 'address', 'city', 'state', 'zip',
-    'emergency_name', 'emergency_phone', 'title', 'department', 'employment_type', 'rate', 'rate_frequency',
+    'emergency_name', 'emergency_phone', 'title', 'position', 'department', 'employment_type', 'rate', 'rate_frequency',
     'start_date', 'end_date', 'equipment_needed', 'notes'];
   const stripPay = (req, row) => { if (row && !seesPay(req)) { delete row.rate; delete row.rate_frequency; } return row; };
   const setPersonProjects = (pid, ids) => {
@@ -630,8 +631,9 @@ export function createApp(db) {
     }
     if (ended_at <= started_at) throw new HttpError(400, 'End must be after start');
     const pid = personnel_id || (track === 'main' ? t.assignee_id : t[`${track}_assignee_id`] || t.assignee_id) || req.user.personnel_id;
-    h.run('INSERT INTO time_entries (ticket_id, personnel_id, track, started_at, ended_at, manual, note, created_by) VALUES (?,?,?,?,?,1,?,?)',
-      t.id, pid || null, track, started_at, ended_at, note || null, req.user.id);
+    const position = req.body?.position || svc.positionOf(pid);
+    h.run('INSERT INTO time_entries (ticket_id, personnel_id, position, track, started_at, ended_at, manual, note, created_by) VALUES (?,?,?,?,?,?,1,?,?)',
+      t.id, pid || null, position, track, started_at, ended_at, note || null, req.user.id);
     svc.log(t.id, req.user.id, 'time', `Added ${Math.round((new Date(ended_at) - new Date(started_at)) / 60000)} min manually (${track})`);
     res.json({ ok: true });
   });
@@ -649,8 +651,8 @@ export function createApp(db) {
     const started = req.body.started_at ? parseWhen(req.body.started_at, 'Start') : e.started_at;
     const ended = req.body.ended_at ? parseWhen(req.body.ended_at, 'End') : e.ended_at;
     if (ended <= started) throw new HttpError(400, 'End must be after start');
-    h.run("UPDATE time_entries SET started_at = ?, ended_at = ?, note = ?, manual = 1, updated_at = datetime('now') WHERE id = ?",
-      started, ended, req.body.note ?? e.note, e.id);
+    h.run("UPDATE time_entries SET started_at = ?, ended_at = ?, note = ?, position = ?, manual = 1, updated_at = datetime('now') WHERE id = ?",
+      started, ended, req.body.note ?? e.note, req.body.position || e.position, e.id);
     svc.log(t.id, req.user.id, 'time', `Edited time entry #${e.id}`);
     res.json({ ok: true });
   });
@@ -659,6 +661,53 @@ export function createApp(db) {
     h.run('DELETE FROM time_entries WHERE id = ?', e.id);
     svc.log(t.id, req.user.id, 'time', `Deleted time entry #${e.id}`);
     res.json({ ok: true });
+  });
+
+  // ---------- time cards & time reports ----------
+  // Every entry belongs to one person and carries the position they held when it was logged, so the
+  // same rows roll up per person (time cards, billing) and per position (cumulative project reports).
+  const ENTRY_SECONDS = "CAST((julianday(COALESCE(te.ended_at, strftime('%Y-%m-%dT%H:%M:%fZ','now'))) - julianday(te.started_at)) * 86400 AS INTEGER)";
+  const timeFilter = (q) => {
+    const where = [], params = [];
+    const add = (sql, v) => { where.push(sql); params.push(v); };
+    if (q.personnel_id) add('te.personnel_id = ?', Number(q.personnel_id));
+    if (q.project_id) add('t.project_id = ?', Number(q.project_id));
+    if (q.account_id) add('t.account_id = ?', Number(q.account_id));
+    if (q.client_id) add('p.client_id = ?', Number(q.client_id));
+    if (q.position) add("COALESCE(te.position, 'Unspecified') = ?", q.position);
+    if (q.from) add('te.started_at >= ?', new Date(q.from).toISOString());
+    if (q.to) add('te.started_at < ?', new Date(q.to).toISOString());
+    return { sql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
+  };
+  const TIME_FROM = `FROM time_entries te JOIN tickets t ON t.id = te.ticket_id LEFT JOIN projects p ON p.id = t.project_id
+    LEFT JOIN clients c ON c.id = p.client_id LEFT JOIN accounts a ON a.id = t.account_id LEFT JOIN personnel pe ON pe.id = te.personnel_id`;
+
+  app.get('/api/timecard', (req, res) => {
+    const pid = Number(req.query.personnel_id || req.user.personnel_id);
+    if (!pid) throw new HttpError(400, 'Your login is not linked to a personnel record yet — ask an admin to link it');
+    if (pid !== req.user.personnel_id && !seesTimecards(req)) throw new HttpError(403, 'You can only see your own time card');
+    const f = timeFilter({ ...req.query, personnel_id: pid });
+    const entries = h.all(`SELECT te.id, te.started_at, te.ended_at, te.track, te.manual, te.note, COALESCE(te.position, 'Unspecified') AS position,
+      ${ENTRY_SECONDS} AS seconds, t.id AS ticket_id, t.ticket_number, t.title, t.board, p.official_name AS project_name, p.project_number,
+      c.name AS client_name, a.billing_code ${TIME_FROM} ${f.sql} ORDER BY te.started_at`, ...f.params);
+    const person = h.get(`SELECT id, ${pname('personnel')} AS name, title, position, employment_type, department FROM personnel WHERE id = ?`, pid);
+    res.json({ person, entries });
+  });
+
+  app.get('/api/time/summary', (req, res) => {
+    const f = timeFilter(req.query);
+    const sum = (groupCols, select) => h.all(`SELECT ${select}, SUM(${ENTRY_SECONDS}) AS seconds, COUNT(*) AS entries
+      ${TIME_FROM} ${f.sql} GROUP BY ${groupCols} ORDER BY seconds DESC`, ...f.params);
+    const out = {
+      total_seconds: h.get(`SELECT COALESCE(SUM(${ENTRY_SECONDS}), 0) AS s ${TIME_FROM} ${f.sql}`, ...f.params).s,
+      by_position: sum("COALESCE(te.position, 'Unspecified')", "COALESCE(te.position, 'Unspecified') AS position, COUNT(DISTINCT te.personnel_id) AS people"),
+      by_account: sum('t.account_id', 'a.billing_code, a.department'),
+    };
+    if (seesTimecards(req)) {
+      out.by_person = sum("te.personnel_id, COALESCE(te.position, 'Unspecified')",
+        `te.personnel_id, ${pname('pe')} AS name, COALESCE(te.position, 'Unspecified') AS position, pe.employment_type`);
+    }
+    res.json(out);
   });
 
   // ---------- editorial schedule ----------

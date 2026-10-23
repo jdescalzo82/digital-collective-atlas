@@ -5,6 +5,7 @@ import * as onboarding from './views/onboarding.js';
 import * as tickets from './views/tickets.js';
 import * as people from './views/people.js';
 import * as misc from './views/misc.js';
+import * as timecard from './views/timecard.js';
 
 const root = document.getElementById('app');
 let main;
@@ -16,6 +17,7 @@ export function menu() {
     { group: 'Start', items: [
       { label: 'Home', href: '#/', show: any },
       { label: 'My tickets', href: '#/my', show: any },
+      { label: 'My time card', href: '#/timecard', show: any },
       { label: 'Scan a barcode', href: '#/scan', show: any },
     ] },
     { group: 'Onboarding', items: [
@@ -53,6 +55,7 @@ export function menu() {
 const routes = [
   [/^\/?$/, misc.home],
   [/^\/my$/, tickets.myTickets],
+  [/^\/timecard(?:\/(\d+))?$/, timecard.timecard],
   [/^\/scan$/, misc.scanPage],
   [/^\/notifications$/, misc.notifications],
   [/^\/personnel$/, onboarding.personnelList],

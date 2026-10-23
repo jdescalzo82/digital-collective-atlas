@@ -84,11 +84,13 @@ export function createServices(h) {
   }
 
   // ---------- time tracking ----------
+  // Time is logged to whoever is assigned when the clock starts, under the position they hold right then.
+  const positionOf = (personnelId) => (personnelId ? h.get('SELECT position FROM personnel WHERE id = ?', personnelId)?.position ?? null : null);
   function openTimer(ticketId, track, personnelId, userId) {
     const open = h.get('SELECT id FROM time_entries WHERE ticket_id = ? AND track = ? AND ended_at IS NULL', ticketId, track);
     if (open) return;
-    h.run('INSERT INTO time_entries (ticket_id, personnel_id, track, started_at, created_by) VALUES (?,?,?,?,?)',
-      ticketId, personnelId ?? null, track, now(), userId ?? null);
+    h.run('INSERT INTO time_entries (ticket_id, personnel_id, position, track, started_at, created_by) VALUES (?,?,?,?,?,?)',
+      ticketId, personnelId ?? null, positionOf(personnelId), track, now(), userId ?? null);
   }
   function closeTimers(ticketId, track) {
     const t = now();
@@ -338,7 +340,7 @@ export function createServices(h) {
   }
 
   return {
-    can, userPerms, log, notifyUsers, nextProjectNumber, nextItemNumber, createAccount,
+    can, userPerms, positionOf, log, notifyUsers, nextProjectNumber, nextItemNumber, createAccount,
     createTicket, updateTicket, assign, changeStatus, changeTrackStatus, unarchive, cutDown,
     requestFinishing, setProjectStatus, canEditTime, closeTimers, getTicket,
   };

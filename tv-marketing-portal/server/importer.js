@@ -7,7 +7,7 @@ import { HttpError } from './services.js';
 
 export const IMPORT_FIELDS = {
   personnel: ['first_name', 'last_name', 'email', 'phone', 'mobile', 'address', 'city', 'state', 'zip',
-    'emergency_name', 'emergency_phone', 'title', 'department', 'employment_type', 'rate', 'rate_frequency',
+    'emergency_name', 'emergency_phone', 'title', 'position', 'department', 'employment_type', 'rate', 'rate_frequency',
     'start_date', 'end_date', 'equipment_needed', 'notes'],
   clients: ['name', 'billing_prefix', 'poc_name', 'poc_title', 'poc_email', 'poc_phone', 'department', 'sector',
     'acct_name', 'acct_email', 'acct_phone', 'birthday', 'notes'],
@@ -22,6 +22,7 @@ const FIELD_HINTS = {
   rate: 'number only, no currency symbol',
   budget: 'number only', est_cost: 'number only', year: 'four-digit year',
   scope: 'comma-separated list, e.g. "Trailer, TV, Digitals"',
+  position: 'one of: Assistant Editor, Editor, PA, Producer, Finishing Artist, Mixer, Graphics, Coordinator, Other',
   billing_prefix: '2-5 uppercase letters identifying the client, invent one from the name if absent',
   client_name: 'name of the client/studio/brand', producer_name: 'full name of the assigned producer',
   project_name: 'official name or code name of the project', assigned_to_name: 'full name of the person',

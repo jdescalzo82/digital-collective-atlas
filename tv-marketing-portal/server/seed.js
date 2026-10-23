@@ -5,13 +5,12 @@ import { createServices, hashPassword } from './services.js';
 
 export function seedBase(db, { adminPassword = 'admin' } = {}) {
   const h = helpers(db);
-  if (!h.get('SELECT COUNT(*) AS n FROM options').n) {
-    for (const [category, values] of Object.entries(DEFAULT_OPTIONS)) {
-      values.forEach((v, i) => {
-        const [value, code] = Array.isArray(v) ? v : [v, null];
-        h.run('INSERT INTO options (category, value, code, sort) VALUES (?,?,?,?)', category, value, code, i);
-      });
-    }
+  // OR IGNORE: new defaults reach existing databases, and options an admin deactivated stay deactivated.
+  for (const [category, values] of Object.entries(DEFAULT_OPTIONS)) {
+    values.forEach((v, i) => {
+      const [value, code] = Array.isArray(v) ? v : [v, null];
+      h.run('INSERT OR IGNORE INTO options (category, value, code, sort) VALUES (?,?,?,?)', category, value, code, i);
+    });
   }
   if (!h.get('SELECT COUNT(*) AS n FROM users').n) {
     h.run("INSERT INTO users (username, display_name, password_hash, role, permissions) VALUES ('admin', 'Administrator', ?, 'Admin', 'admin')", hashPassword(adminPassword));
@@ -25,10 +24,12 @@ export function seedDemo(db) {
   if (h.get('SELECT COUNT(*) AS n FROM clients').n) return;
   const svc = createServices(h);
   const admin = h.get("SELECT * FROM users WHERE username = 'admin'");
+  const POSITION = { 'Senior Producer': 'Producer', 'Senior Editor': 'Editor', Editor: 'Editor', 'Assistant Editor': 'Assistant Editor',
+    'Production Assistant': 'PA', 'Finishing Artist': 'Finishing Artist', Mixer: 'Mixer' };
   const person = (first, last, title, department, type, extra = {}) => Number(h.run(
-    `INSERT INTO personnel (first_name, last_name, email, phone, title, department, employment_type, rate, rate_frequency, start_date, hr_status, it_status)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-    first, last, `${first.toLowerCase()}.${last.toLowerCase()}@example.com`, '555-0100', title, department, type,
+    `INSERT INTO personnel (first_name, last_name, email, phone, title, position, department, employment_type, rate, rate_frequency, start_date, hr_status, it_status)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    first, last, `${first.toLowerCase()}.${last.toLowerCase()}@example.com`, '555-0100', title, POSITION[title] ?? 'Other', department, type,
     extra.rate ?? null, extra.freq ?? null, extra.start ?? '2026-01-05', extra.hr ?? 'Sent to IT', extra.it ?? 'Ready').lastInsertRowid);
 
   const maya = person('Maya', 'Chen', 'Senior Producer', 'Creative', 'Staff', { rate: 145000, freq: 'Annual' });
@@ -38,6 +39,7 @@ export function seedDemo(db) {
   const jo = person('Jo', 'Park', 'Assistant Editor', 'Assistant Editorial', 'Freelance', { rate: 45, freq: 'Hourly' });
   const rae = person('Rae', 'Morgan', 'Finishing Artist', 'Finishing', 'Staff', { rate: 120000, freq: 'Annual' });
   const dev = person('Dev', 'Shah', 'Mixer', 'Audio', 'Freelance', { rate: 1200, freq: 'Daily' });
+  const kai = person('Kai', 'Brooks', 'Production Assistant', 'Operations', 'Freelance', { rate: 25, freq: 'Hourly' });
   person('Alex', 'Rivera', 'Editor', 'Editorial', 'Freelance', { rate: 900, freq: 'Daily', start: '2026-11-02', hr: 'Pending Review', it: 'Waiting on HR' });
 
   const user = (username, name, role, perms, pid) => h.run(
@@ -50,7 +52,8 @@ export function seedDemo(db) {
   user('jo', 'Jo Park', 'Assistant Editor', '', jo);
   user('rae', 'Rae Morgan', 'Finishing Lead', 'manage_finishing', rae);
   user('dev', 'Dev Shah', 'Mixer', '', dev);
-  user('hr', 'Harper Reyes', 'HR', 'hr', null);
+  user('kai', 'Kai Brooks', 'PA', '', kai);
+  user('hr', 'Harper Reyes', 'HR', 'hr,timecards', null);
   user('it', 'Ivan Tran', 'IT', 'it', null);
 
   const client = (name, prefix, sector, poc) => Number(h.run(
@@ -67,7 +70,7 @@ export function seedDemo(db) {
   };
   const p1 = project('Midnight Harbor', 'LIGHTHOUSE', nova, ['Trailer', 'TV', 'Digitals'], '2026-10-12', '2026-11-20', '2026-12-04', 250000, 182000);
   const p2 = project('Season 3 Launch — The Orchard', 'APPLESEED', stream, ['Trailer', 'Key Art', 'Sizzle'], '2026-10-26', '2026-12-01', '2026-12-15', 140000, 121500);
-  for (const [pid, ids] of [[p1, [leo, priya, sam, jo, rae, dev]], [p2, [priya, jo]]]) {
+  for (const [pid, ids] of [[p1, [leo, priya, sam, jo, rae, dev, kai]], [p2, [priya, jo]]]) {
     for (const id of ids) h.run('INSERT INTO personnel_projects VALUES (?,?)', id, pid);
   }
   const a1 = svc.createAccount({ project_id: p1, department: 'Editorial' }, admin);

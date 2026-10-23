@@ -18,7 +18,7 @@ npm start        # empty system, just the dropdown lists and an admin login
 
 Open http://localhost:3000 and sign in as `admin` / `admin`. Set `ADMIN_PASSWORD` before the first run to choose a different password.
 
-Demo logins (password `password`): `maya` (producer, editorial manager, can see financials), `sam` (AE lead), `jo` (assistant editor), `leo` and `priya` (editors), `rae` (finishing lead), `dev` (mixer), `hr`, `it`.
+Demo logins (password `password`): `maya` (producer, editorial manager, can see financials), `sam` (AE lead), `jo` (assistant editor), `leo` and `priya` (editors), `rae` (finishing lead), `dev` (mixer), `kai` (PA), `hr` (also sees all time cards), `it`.
 
 | Setting | Default | Purpose |
 |---|---|---|
@@ -27,14 +27,16 @@ Demo logins (password `password`): `maya` (producer, editorial manager, can see 
 | `ADMIN_PASSWORD` | `admin` | Password for the first admin account |
 | `ANTHROPIC_API_KEY` | (none) | Turns on importing from screenshots, photos and PDFs |
 
-`npm test` runs the API tests: billing codes, permissions, timers, unarchive, cut-down, finishing, project kill, HR→IT handoff, scanning and import.
+`npm test` runs the API tests: billing codes, permissions, timers, time cards, reports by position, unarchive, cut-down, finishing, project kill, HR→IT handoff, scanning, import, and upgrading an older database.
+
+Existing databases are upgraded automatically on start-up. The new columns are added, and existing time is kept.
 
 ## What's in it
 
 ### 1. Onboarding (databases)
 | Portal | Highlights |
 |---|---|
-| **Personnel** (Rolodex) | Contact details, emergency contact, title, department, staff/freelance, rate and frequency (only HR and people with financial access see these), start/end dates, projects they're on, equipment needed. Taggable. |
+| **Personnel** (Rolodex) | Contact details, emergency contact, title, **position** (used for time reports), department, staff/freelance, rate and frequency (only HR and people with financial access see these), start/end dates, projects they're on, equipment needed. Taggable. |
 | **Clients** | Point of contact, department, sector, accounting contact, optional birthday, notes, and a unique **billing prefix**. The detail page shows the client's full project history with ticket counts and hours. When a client is tagged on work, only the client's name is shown. Taggable. |
 | **Project titles** | Official name, code name, client, estimated start, lock and final delivery dates, producer, and scope of work (multi-select). **Budget, estimated cost and differential** are visible only to users with `view_financials`. Projects can be put on hold, completed, **cancelled or killed**. |
 | **Accounts** | Clients and projects in one filterable view, with billing numbers. A billing number is `CLIENTPREFIX-DEPTCODE-0001` (for example `NOVA-ED-0001`), numbered in sequence per client and department and generated automatically. |
@@ -62,7 +64,14 @@ Requests start from **New request** (the entry switchboard). You pick a project,
 - **Unarchive** (in the status menu) creates a new Draft named `Unarchive - <name>` with all the details. The original keeps its status.
 - **Cut-Down** (in the status menu) asks for the new duration, then creates a Draft named `Cut-Down :15 - <creative>`. It keeps the billing number and links back to the original, but leaves out the rest of the project details.
 - **Request finishing** (a button on editorial tickets) builds a finishing ticket from the editorial one, linked to it. The picture and sound statuses then show on the editorial ticket. The finishing ticket bills to the project's Finishing billing number if one exists, and otherwise to the editorial one.
+- **Who gets the time:** a clock entry belongs to whoever is assigned *when the clock starts* (for finishing, the picture or sound artist). If the ticket is reassigned while the clock runs, the first person's entry closes and the new person's opens, so nobody is credited with someone else's hours.
+- **Position on every entry:** each entry also records the person's **position** at that moment (Assistant Editor, Editor, PA, Producer…, editable under Dropdown options). If someone is later promoted, their past hours stay under the position they held then. A manager can relabel a single entry when someone covered a different role.
 - Every ticket carries a billing number. Killing or cancelling a project closes its billing numbers, cancels its open tickets and stops their clocks.
+
+### Time cards & time reports
+- **My time card** (in the Start menu) shows a person's hours week by week: daily totals, totals by billing number, project and position, every entry with ticket, client and billing number, and a **CSV export** for payroll and client billing. Everyone can see their own. People with the `timecards`, `hr` or `view_financials` permission can open anyone's.
+- **Project pages** show cumulative **time by position** (how many AE, Editor and PA hours went into the project) for everyone. Per-person and per-billing-number breakdowns are shown to people with time-card access.
+- Reports draw on `GET /api/time/summary?project_id=…&account_id=…&client_id=…&from=…&to=…`, which returns totals by position, by person and by billing number. The reports panel will be built on it.
 
 ### 3. People ops
 - **HR board:** HR verifies each record, confirms dates and pay, and then clicks **Send to IT**, which notifies IT.
@@ -73,7 +82,7 @@ Use **Scan a barcode**, or the 📷 button next to any item-number field, to sca
 
 ## Permissions
 Assign these per user under **Admin → Users & permissions**:
-`admin`, `onboarding`, `view_financials`, `manage_ae`, `manage_editorial`, `manage_finishing`, `hr`, `it`, `import`.
+`admin`, `onboarding`, `view_financials`, `manage_ae`, `manage_editorial`, `manage_finishing`, `hr`, `it`, `import`, `timecards`.
 
 Link each login to its personnel record. That link is how the portal knows which tickets are "mine" and whose time is being logged.
 

@@ -65,6 +65,7 @@ export const PERMISSIONS = {
   hr: 'HR personnel board (verify data, confirm dates, pay)',
   it: 'IT setup board (no pay data)',
   import: 'Import records from files and screenshots',
+  timecards: 'See everyone\'s time cards and per-person hours on projects',
 };
 
 export const DEFAULT_OPTIONS = {
@@ -77,7 +78,9 @@ export const DEFAULT_OPTIONS = {
   client_department: ['Marketing', 'Creative Advertising', 'Publicity', 'Digital Marketing', 'Brand Partnerships', 'Media'],
   employment_type: ['Staff', 'Freelance', 'Contractor', 'Intern'],
   rate_frequency: ['Hourly', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Annual', 'Flat / Per Project'],
-  title: ['Editor', 'Senior Editor', 'Assistant Editor', 'Producer', 'Senior Producer', 'Coordinator', 'Finishing Artist', 'Colorist', 'Mixer', 'Designer', 'Writer', 'Manager'],
+  // Position = the bucket time is reported under (cumulative hours per position on a project).
+  position: ['Assistant Editor', 'Editor', 'PA', 'Producer', 'Finishing Artist', 'Mixer', 'Graphics', 'Coordinator', 'Other'],
+  title: ['Editor', 'Senior Editor', 'Assistant Editor', 'Production Assistant', 'Producer', 'Senior Producer', 'Coordinator', 'Finishing Artist', 'Colorist', 'Mixer', 'Designer', 'Writer', 'Manager'],
   scope_of_work: ['Print Campaign', 'Trailer', 'Digitals', 'TV', 'Out of Home', 'Production', 'Finishing', 'Graphics', 'Key Art', 'Experiential', 'Sizzle', 'Tribute', 'Pitch', 'Reel'],
   media_type: ['Hard Drive', 'SSD', 'LTO Tape', 'Camera Card', 'Blu-ray', 'DVD', 'HDCAM', 'Thumb Drive'],
   equipment_type: ['Workstation', 'Laptop', 'Monitor', 'Reference Monitor', 'Audio Interface', 'Speakers', 'Headphones', 'Storage', 'Deck', 'Camera', 'Peripheral'],
