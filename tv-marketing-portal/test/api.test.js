@@ -245,13 +245,13 @@ test('time follows the assignee, keeps their position, and rolls up by position 
 });
 
 test('migration adds position columns to an older database', async () => {
-  const { DatabaseSync } = await import('node:sqlite');
+  const { driver } = await import('../server/db.js');
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'portal-'));
   const file = path.join(dir, 'old.db');
-  const old = new DatabaseSync(file);
+  const old = new driver.Database(file);
   old.exec(`CREATE TABLE personnel (id INTEGER PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL DEFAULT '');
     CREATE TABLE time_entries (id INTEGER PRIMARY KEY, ticket_id INTEGER NOT NULL, personnel_id INTEGER, track TEXT NOT NULL DEFAULT 'main',
       started_at TEXT NOT NULL, ended_at TEXT, manual INTEGER NOT NULL DEFAULT 0, note TEXT, created_by INTEGER, updated_at TEXT);

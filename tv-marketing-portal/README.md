@@ -6,7 +6,7 @@ One **“Go to…”** menu at the top takes each person to the right part of th
 
 ## Run it
 
-Requires Node 22.13 or newer. There's no build step and no external database, since SQLite is built into Node.
+Requires Node 18 or newer (22.13+ preferred). There's no build step and no external database server: data is stored in a single SQLite file.
 
 ```bash
 cd tv-marketing-portal
@@ -26,6 +26,9 @@ Demo logins (password `password`): `maya` (producer, editorial manager, can see 
 | `DB_FILE` | `data/portal.db` | SQLite file. Back this file up. |
 | `ADMIN_PASSWORD` | `admin` | Password for the first admin account |
 | `ANTHROPIC_API_KEY` | (none) | Turns on importing from screenshots, photos and PDFs |
+| `BASE_PATH` | (none) | Serve the portal under a sub-path, for example `/ProjectPanes` |
+
+To deploy on cPanel, see **[DEPLOY_CPANEL.md](DEPLOY_CPANEL.md)**. The startup file is `app.cjs`. On Node older than 22.13 the app uses the optional `better-sqlite3` package instead of Node's built-in SQLite.
 
 `npm test` runs the API tests: billing codes, permissions, timers, time cards, reports by position, unarchive, cut-down, finishing, project kill, HR→IT handoff, scanning, import, and upgrading an older database.
 

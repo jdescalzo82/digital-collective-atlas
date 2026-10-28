@@ -9,7 +9,7 @@ function loadZxing() {
   zxingLoading ??= new Promise((resolve, reject) => {
     if (window.ZXingBrowser) return resolve(window.ZXingBrowser);
     const s = document.createElement('script');
-    s.src = '/vendor/zxing-browser.min.js';
+    s.src = 'vendor/zxing-browser.min.js';
     s.onload = () => resolve(window.ZXingBrowser);
     s.onerror = () => reject(new Error('Could not load the barcode reader'));
     document.head.append(s);

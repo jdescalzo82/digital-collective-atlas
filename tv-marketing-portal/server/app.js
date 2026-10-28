@@ -1,5 +1,6 @@
 import express from 'express';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { helpers } from './db.js';
@@ -19,6 +20,19 @@ export function createApp(db) {
   const h = helpers(db);
   const svc = createServices(h);
   const app = express();
+  // Hosted under a sub-path (e.g. BASE_PATH=/ProjectPanes on cPanel). Works whether or not the
+  // web server strips the prefix before the request reaches the app.
+  const base = (process.env.BASE_PATH || '').replace(/\/+$/, '');
+  if (base) {
+    app.use((req, res, next) => {
+      const lower = req.url.toLowerCase(), b = base.toLowerCase();
+      if (lower === b || lower.startsWith(`${b}?`)) return res.redirect(301, `${base}/${req.url.slice(base.length)}`);
+      if (lower.startsWith(`${b}/`)) req.url = req.url.slice(base.length);
+      next();
+    });
+  }
+  const cookieAttrs = (req) => `HttpOnly; SameSite=Lax; Path=${base || ''}/${
+    req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.COOKIE_SECURE === '1' ? '; Secure' : ''}`;
   app.use(express.json({ limit: '30mb' }));
 
   // ---------- auth ----------
@@ -49,13 +63,13 @@ export function createApp(db) {
     if (!u || !checkPassword(password || '', u.password_hash)) throw new HttpError(401, 'Wrong username or password');
     const token = crypto.randomBytes(24).toString('hex');
     h.run(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?, datetime('now', '+${SESSION_DAYS} days'))`, token, u.id);
-    res.setHeader('Set-Cookie', `sid=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_DAYS * 86400}${req.secure ? '; Secure' : ''}`);
+    res.setHeader('Set-Cookie', `sid=${token}; Max-Age=${SESSION_DAYS * 86400}; ${cookieAttrs(req)}`);
     res.json({ ok: true, token });
   });
   app.post('/api/logout', (req, res) => {
     const token = cookie(req, 'sid');
     if (token) h.run('DELETE FROM sessions WHERE token = ?', token);
-    res.setHeader('Set-Cookie', 'sid=; Path=/; Max-Age=0');
+    res.setHeader('Set-Cookie', `sid=; Max-Age=0; ${cookieAttrs(req)}`);
     res.json({ ok: true });
   });
 
@@ -805,8 +819,11 @@ export function createApp(db) {
 
   // ---------- static front end ----------
   app.use('/vendor/zxing-browser.min.js', express.static(path.join(here, '..', 'node_modules', '@zxing', 'browser', 'umd', 'zxing-browser.min.js')));
-  app.use(express.static(path.join(here, '..', 'public')));
-  app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(here, '..', 'public', 'index.html')));
+  // index.html gets a <base href> so the page's relative URLs resolve under BASE_PATH.
+  const indexHtml = fs.readFileSync(path.join(here, '..', 'public', 'index.html'), 'utf8')
+    .replace('<head>', `<head>\n  <base href="${base}/">`);
+  app.use(express.static(path.join(here, '..', 'public'), { index: false }));
+  app.get(/^\/(?!api\/).*/, (_req, res) => res.type('html').send(indexHtml));
 
   app.use((err, _req, res, _next) => {
     if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });

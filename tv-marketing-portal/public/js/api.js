@@ -2,7 +2,8 @@
 export const state = { me: null, meta: null, lookup: null };
 
 export async function api(method, url, body) {
-  const res = await fetch(`/api${url}`, {
+  // Relative to the page's <base href>, so the portal works under a sub-path like /ProjectPanes/.
+  const res = await fetch(`api${url}`, {
     method,
     headers: body ? { 'content-type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,

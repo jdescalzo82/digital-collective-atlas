@@ -1,8 +1,21 @@
 // SQLite storage. Everything is relational so a change in one place (a client's
 // prefix, a project's producer, a person's name) shows up everywhere it's referenced.
-import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
+
+// Node's built-in SQLite needs Node 22.13+. Many cPanel hosts run older Node, so fall back to
+// better-sqlite3 (an optional dependency) when it isn't there. SQLITE_DRIVER=better forces it.
+const require = createRequire(import.meta.url);
+function loadDriver() {
+  if (process.env.SQLITE_DRIVER !== 'better') {
+    try { return { name: 'node:sqlite', Database: require('node:sqlite').DatabaseSync }; } catch { /* not available */ }
+  }
+  try { return { name: 'better-sqlite3', Database: require('better-sqlite3') }; } catch {
+    throw new Error('No SQLite driver: use Node 22.13+ or run `npm install better-sqlite3`.');
+  }
+}
+export const driver = loadDriver();
 
 const SCHEMA = `
 PRAGMA foreign_keys = ON;
@@ -246,7 +259,7 @@ CREATE INDEX IF NOT EXISTS notif_user ON notifications(user_id, read);
 
 export function openDb(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
-  const db = new DatabaseSync(file);
+  const db = new driver.Database(file);
   db.exec(SCHEMA);
   migrate(db);
   return db;
