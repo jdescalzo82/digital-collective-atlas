@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Grid · Pigment Lens</title>
+  <meta name="description" content="Put a grid on your reference image and get the exact grid to draw on your canvas." />
+  <meta name="theme-color" content="#f6f1e9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1b1916" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%23b5512a%22/%3E%3Ccircle cx=%2211%22 cy=%2212%22 r=%223%22 fill=%22%23fbb800%22/%3E%3Ccircle cx=%2219%22 cy=%2210%22 r=%223%22 fill=%22%232b3593%22/%3E%3Ccircle cx=%2222%22 cy=%2218%22 r=%223%22 fill=%22%234b6a24%22/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="app.css" />
+  <script type="module" src="grid.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Pigment Lens</span>
+      <small class="suite">Toolkit Your Life</small>
+    </div>
+    <button id="account-btn" class="chip ghost" type="button" hidden>Sign in</button>
+  </header>
+  <nav class="tool-tabs" aria-label="Pigment Lens tools">
+    <a href="index.html">Mix colors</a>
+    <a href="palette.html">Palette ideas</a>
+    <a href="grid.html" aria-current="page">Grid</a>
+  </nav>
+
+  <main>
+    <section class="card">
+      <div class="card-head"><h2><span class="step">1</span> Your reference image</h2></div>
+      <div class="actions">
+        <label class="btn primary"><input id="grid-camera" type="file" accept="image/*" capture="environment" hidden />Take photo</label>
+        <label class="btn"><input id="grid-upload" type="file" accept="image/*" hidden />Upload image</label>
+      </div>
+      <div id="grid-stage" class="stage empty">
+        <canvas id="grid-canvas" aria-label="Reference with grid. Drag to move the crop."></canvas>
+        <p class="placeholder">Upload the image you want to copy. The grid appears on it here.</p>
+      </div>
+      <p id="drag-hint" class="muted small" hidden>Drag the image to choose which part fits your canvas.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2><span class="step">2</span> Your canvas and grid</h2></div>
+      <div class="settings">
+        <label>Canvas width<input id="cw" type="number" min="1" step="any" value="16" inputmode="decimal" /></label>
+        <label>Canvas height<input id="ch" type="number" min="1" step="any" value="20" inputmode="decimal" /></label>
+        <label>Units
+          <select id="unit"><option value="in">inches</option><option value="cm">centimeters</option></select>
+        </label>
+        <label>Grid by
+          <select id="mode">
+            <option value="size">Square size on canvas</option>
+            <option value="across">Number of squares across</option>
+            <option value="rc">Rows × columns</option>
+          </select>
+        </label>
+        <label id="f-size">Square size<input id="size" type="number" min="0.1" step="any" value="2" inputmode="decimal" /></label>
+        <label id="f-across" hidden>Squares across<input id="across" type="number" min="1" max="60" step="1" value="8" /></label>
+        <label id="f-rows" hidden>Rows<input id="rows" type="number" min="1" max="60" step="1" value="10" /></label>
+        <label id="f-cols" hidden>Columns<input id="cols" type="number" min="1" max="60" step="1" value="8" /></label>
+        <label>If shapes differ
+          <select id="fit">
+            <option value="crop">Crop the image to the canvas</option>
+            <option value="fit">Fit the whole image, leave a border</option>
+          </select>
+        </label>
+        <label>Line color
+          <select id="line"><option value="auto">Auto (black and white)</option><option value="#000000">Black</option><option value="#ffffff">White</option><option value="#e5322d">Red</option></select>
+        </label>
+      </div>
+      <div class="checks">
+        <label><input id="diag" type="checkbox" /> Diagonals in each square</label>
+        <label><input id="labels" type="checkbox" checked /> Label rows and columns</label>
+      </div>
+    </section>
+
+    <section class="card" id="grid-result" hidden>
+      <div class="card-head">
+        <h2><span class="step">3</span> Draw this on your canvas</h2>
+        <button id="grid-download" class="chip" type="button">Download gridded image</button>
+      </div>
+      <div id="grid-summary"></div>
+      <div class="canvas-plan"><canvas id="plan-canvas" aria-label="Diagram of your canvas with the grid"></canvas></div>
+      <div id="grid-marks"></div>
+    </section>
+
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

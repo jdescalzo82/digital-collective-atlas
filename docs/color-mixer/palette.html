@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Palette ideas · Pigment Lens</title>
+  <meta name="description" content="Get a color palette from any image or website, with harmony ideas and the paints you need to mix it." />
+  <meta name="theme-color" content="#f6f1e9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1b1916" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%23b5512a%22/%3E%3Ccircle cx=%2211%22 cy=%2212%22 r=%223%22 fill=%22%23fbb800%22/%3E%3Ccircle cx=%2219%22 cy=%2210%22 r=%223%22 fill=%22%232b3593%22/%3E%3Ccircle cx=%2222%22 cy=%2218%22 r=%223%22 fill=%22%234b6a24%22/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="app.css" />
+  <script type="module" src="palette.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Pigment Lens</span>
+      <small class="suite">Toolkit Your Life</small>
+    </div>
+    <button id="account-btn" class="chip ghost" type="button" hidden>Sign in</button>
+  </header>
+  <nav class="tool-tabs" aria-label="Pigment Lens tools">
+    <a href="index.html">Mix colors</a>
+    <a href="palette.html" aria-current="page">Palette ideas</a>
+    <a href="grid.html">Grid</a>
+  </nav>
+
+  <main>
+    <section class="card">
+      <div class="card-head"><h2><span class="step">1</span> Where should the colors come from?</h2></div>
+      <div class="seg" role="tablist" aria-label="Source">
+        <button type="button" class="seg-btn on" data-src="image" role="tab" aria-selected="true">An image</button>
+        <button type="button" class="seg-btn" data-src="url" role="tab" aria-selected="false">A website</button>
+      </div>
+      <div id="src-image" class="src">
+        <div class="actions">
+          <label class="btn primary"><input id="pal-camera" type="file" accept="image/*" capture="environment" hidden />Take photo</label>
+          <label class="btn"><input id="pal-upload" type="file" accept="image/*" hidden />Upload image</label>
+        </div>
+        <p class="muted small">A painting you love, a photo, a fabric swatch, a screenshot. Anything works.</p>
+      </div>
+      <form id="src-url" class="src url-form" hidden novalidate>
+        <label class="url-field"><span class="muted small">Website address</span>
+          <input id="pal-url" type="url" inputmode="url" placeholder="example.com" autocomplete="url" required />
+        </label>
+        <button class="btn primary" type="submit">Get colors</button>
+        <p class="muted small">Reads the colors the site’s design uses, plus its preview image. If a site blocks this, take a screenshot and upload it instead.</p>
+      </form>
+      <div id="pal-preview" class="stage" hidden><canvas id="pal-canvas" aria-label="Source image"></canvas></div>
+    </section>
+
+    <section class="card" id="extracted-card" hidden>
+      <div class="card-head">
+        <h2><span class="step">2</span> Colors found</h2>
+        <button id="mix-found" class="chip" type="button">Mix these</button>
+      </div>
+      <p id="found-source" class="muted small"></p>
+      <div id="found" class="palette-strip big"></div>
+      <div id="found-image-wrap" hidden>
+        <h3 style="margin-top:1rem">From the site’s preview image</h3>
+        <div id="found-image" class="palette-strip"></div>
+      </div>
+    </section>
+
+    <section class="card" id="ideas-card" hidden>
+      <div class="card-head"><h2><span class="step">3</span> Palette ideas</h2></div>
+      <p class="muted small">Built around <b id="key-name"></b>, the strongest color found. Tap any swatch to use a different key color.</p>
+      <div id="ideas" class="ideas"></div>
+    </section>
+
+    <section class="card" id="paints-card" hidden>
+      <div class="card-head">
+        <h2><span class="step">4</span> Paints to put on your palette</h2>
+        <select id="pal-medium" aria-label="Medium" style="width:auto">
+          <option value="oil">Oil</option><option value="acrylic">Acrylic</option>
+          <option value="gouache">Gouache</option><option value="watercolor">Watercolor</option>
+        </select>
+      </div>
+      <p class="muted small">The fewest of <em>your</em> paints (set under Mix colors → My paints) that mix every color found.</p>
+      <div id="paint-plan"></div>
+    </section>
+
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -6,6 +6,7 @@ import { PIGMENTS, DEFAULT_OWNED } from './pigments.js';
 import { preparePaint, predictLinear, solve, matchQuality, washText } from './mixer.js';
 import { MEDIA, FINISHES, withFinish, fromFinish, wetAppearance, valueStepsText } from './media.js';
 import { account } from './account.js';
+import { loadImageInto, dominantColors } from './image.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -74,17 +75,9 @@ const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
 async function loadFile(file) {
   if (!file) return;
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.decoding = 'async';
-  img.src = url;
-  try { await img.decode(); } catch { toast('That image couldn’t be opened.'); return; }
-  const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
-  canvas.width = Math.round(img.naturalWidth * scale);
-  canvas.height = Math.round(img.naturalHeight * scale);
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  URL.revokeObjectURL(url);
-  S.image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  try {
+    ({ imageData: S.image } = await loadImageInto(canvas, file));
+  } catch { toast('That image couldn’t be opened.'); return; }
   S.gains = [1, 1, 1];
   $('#wb-status').textContent = '';
   $('#stage').classList.remove('empty');
@@ -148,44 +141,10 @@ function setMode(mode) {
 }
 document.querySelectorAll('.seg-btn').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 
-// k-means in Lab over a subsample of the photo.
-function dominantColors(k = 7) {
-  const { data, width, height } = S.image;
-  const step = Math.max(1, Math.floor(Math.sqrt((width * height) / 5000)));
-  const pts = [];
-  for (let y = 0; y < height; y += step) {
-    for (let x = 0; x < width; x += step) {
-      const i = (y * width + x) * 4;
-      pts.push(linearToLab(correct(rgb255ToLinear([data[i], data[i + 1], data[i + 2]]))));
-    }
-  }
-  const dist = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
-  const cents = [pts[Math.floor(pts.length / 2)]];
-  while (cents.length < k) { // k-means++ style: pick farthest point
-    let far = pts[0], fd = -1;
-    for (const p of pts) { const d = Math.min(...cents.map((c) => dist(p, c))); if (d > fd) { fd = d; far = p; } }
-    cents.push(far);
-  }
-  let counts = [];
-  for (let it = 0; it < 10; it++) {
-    const sums = cents.map(() => [0, 0, 0]);
-    counts = cents.map(() => 0);
-    for (const p of pts) {
-      let bi = 0, bd = Infinity;
-      cents.forEach((c, i) => { const d = dist(p, c); if (d < bd) { bd = d; bi = i; } });
-      sums[bi][0] += p[0]; sums[bi][1] += p[1]; sums[bi][2] += p[2]; counts[bi]++;
-    }
-    cents.forEach((c, i) => { if (counts[i]) cents[i] = sums[i].map((v) => v / counts[i]); });
-  }
-  const out = cents.map((lab, i) => ({ lab, share: counts[i] / pts.length }))
-    .filter((c) => c.share > 0.02).sort((a, b) => b.share - a.share);
-  return out.filter((c, i) => out.slice(0, i).every((o) => deltaE2000(o.lab, c.lab) > 6));
-}
-
 function renderAutoPalette() {
   const wrap = $('#auto-swatches');
   wrap.innerHTML = '';
-  for (const { lab, share } of dominantColors()) {
+  for (const { lab, share } of dominantColors(S.image, { toLinear: correct })) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'swatch';

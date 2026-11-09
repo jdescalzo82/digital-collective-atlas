@@ -1,6 +1,12 @@
 # Pigment Lens
 
-A color-mixing app for artists, part of the Toolkit Your Life suite.
+A set of artist tools, part of the Toolkit Your Life suite:
+
+- **Mix colors** (`index.html`): photograph a reference, pick colors, get paint-mixing recipes.
+- **Palette ideas** (`palette.html`): get a palette from an image or a website, with color-harmony ideas and the fewest of your paints that mix it.
+- **Grid** (`grid.html`): put a grid on a reference image and get the exact grid to draw on your canvas.
+
+## Mix colors
 
 1. **Photograph or upload** a reference. Tap anywhere to sample a color, or pick from the main colors detected in the photo.
 2. **Set the white point** by tapping paper or a grey card. This removes the color cast from your lighting so samples are accurate.
@@ -11,6 +17,16 @@ Each recipe also covers:
 - **Drying shift.** Acrylic dries darker, watercolor dries lighter, and gouache shifts toward middle values. Each comes with an estimate in value steps and a "wet on palette" preview.
 - **Finish.** Gloss reads darker and richer, matte reads lighter and softer. You see a preview of each, and the recipe compensates for the finish you choose.
 
+## Palette ideas
+
+Upload an image (or take a photo) and the main colors are found by k-means clustering. Or enter a website address: `site-colors.php` reads the colors in the site's HTML and stylesheets and its preview image. It runs on the Namecheap host because browsers can't read other sites directly. It only fetches public addresses, re-checks every redirect, and caps size and time.
+
+From the strongest color found (tap any swatch to change it) the page builds complementary, analogous, split-complementary, triadic and monochrome palettes. It also lists the smallest set of your own paints that mixes every color found. "Mix these" opens the colors in the Mix page with full recipes.
+
+## Grid
+
+Enter the canvas size (inches or cm) and choose a square size, a number of squares across, or rows × columns. If the image and canvas are different shapes, either crop the image (drag to choose the part kept) or fit the whole image and leave a border. The page gives the square size, the line positions measured from the canvas edges (to the nearest 1/16″), a canvas diagram, and a downloadable gridded reference with matching row and column labels.
+
 ## How it works
 
 | File | Purpose |
@@ -20,7 +36,9 @@ Each recipe also covers:
 | `mixer.js` | Two-constant Kubelka–Munk model (opaque media) and Beer–Lambert over paper (watercolor), with a Nelder–Mead solver over paint combinations |
 | `media.js` | Drying behavior and gloss/satin/matte surface-reflection model |
 | `account.js`, `config.js` | Login and storage bridge (see below) |
-| `app.js` | UI |
+| `app.js`, `palette.js`, `grid.js` | The three pages |
+| `image.js`, `harmony.js`, `shell.js` | Shared image loading and color clustering, harmony palettes, page header |
+| `site-colors.php` | Reads a website's colors (needs PHP with curl; standard on Namecheap) |
 
 Run the tests with `node docs/color-mixer/test/mixer.test.mjs`.
 
@@ -37,7 +55,7 @@ The same document also stores each person's paint settings in a `settings` field
 Away from toolkityourlife.com, for example when testing locally, `/tyl-auth.js` isn't available. The app then runs in guest mode and saves palettes in the browser.
 
 ### Deploying
-1. Upload the contents of this folder (everything except `test/`) to `/PigmentLens/` on toolkityourlife.com, so the app is at `https://www.toolkityourlife.com/PigmentLens/`.
+1. Upload the contents of this folder (everything except `test/`, including `site-colors.php`) to `/PigmentLens/` on toolkityourlife.com, so the app is at `https://www.toolkityourlife.com/PigmentLens/`.
 2. In the Firebase console, go to Firestore Database → Rules and add this inside `match /databases/{database}/documents { … }`, next to the StreamSaver rule:
    ```
    match /pigmentlens/{userId} {
