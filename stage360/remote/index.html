@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Every Seat Remote</title>
+<meta name="description" content="Pick seats, play, pause and change settings for someone watching Every Seat, or call a live director's cut.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f7f0e3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16110f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Seat Remote">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f7f0e3; --card: #fffaf1; --ink: #1d1418; --muted: #6a5a5f; --line: #d9ccb8;
+  --accent: #a8561a; --accent-ink: #fff7ec; --red: #9b1f37; --teal: #11786c; --ok: #2d7a3e; --warn: #a8561a; --err: #b3261e;
+  --f-serif: 'Fraunces', Georgia, serif; --f-mono: 'IBM Plex Mono', ui-monospace, monospace; --f-body: 'Inter', system-ui, sans-serif;
+  --stage: #2a2026; --wing: #1a1418; --seat: #c9b89f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #16110f; --card: #211a18; --ink: #f4ede7; --muted: #aa9eaa; --line: #3a302c;
+    --accent: #f5b95f; --accent-ink: #241503; --red: #ff8a9e; --teal: #72d6c9; --ok: #7fd18f; --warn: #f5b95f; --err: #ff8a7a;
+    --stage: #3a2e34; --wing: #2a2026; --seat: #5a4c44; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.45 var(--f-body); -webkit-text-size-adjust: 100%; }
+body { padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 980px; margin: 0 auto; }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0 10px; border-bottom: 2px solid var(--ink); flex-wrap: wrap; }
+.brand { display: grid; }
+.kicker { font: 500 11px/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 400 28px/1.1 var(--f-serif); margin: 0; }
+h2 { font: 400 22px/1.2 var(--f-serif); margin: 0 0 8px; }
+h3 { font: 600 13px/1.2 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.tabs { display: flex; border: 1px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.tabs button { border: 0; background: transparent; padding: 8px 16px; font-weight: 600; min-height: 40px; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+main { padding-top: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.stack { display: grid; gap: 14px; }
+.grid2 { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .grid2 { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+.muted { color: var(--muted); }
+small, .small { font-size: 13px; }
+.err { color: var(--err); min-height: 1.2em; margin: 6px 0 0; font-size: 14px; }
+.btn { border: 1.5px solid var(--ink); background: transparent; border-radius: 12px; padding: 10px 14px; min-height: 44px; font-weight: 600; }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.accent { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { border-color: var(--err); color: var(--err); }
+.btn:disabled { opacity: .5; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row.spread { justify-content: space-between; }
+.codein { font: 700 28px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; text-align: center; width: 100%; max-width: 12ch; padding: 12px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--paper); }
+.textin { width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--paper); min-height: 44px; }
+label.field { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
+
+/* status */
+.status { display: flex; gap: 10px; align-items: flex-start; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; margin-top: 5px; }
+.dot.on { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+.dot.wait { background: var(--warn); }
+.statusline { font-weight: 600; }
+.hint { margin: 4px 0 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 15%, transparent); font-size: 14px; }
+
+/* seating chart */
+.chart { width: 100%; height: auto; display: block; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.chart .wing { fill: var(--wing); } .chart .deck { fill: var(--stage); }
+.chart .stalls { fill: none; stroke: var(--seat); stroke-width: .12; stroke-dasharray: .5 .28; }
+.chart .rail { stroke: var(--seat); stroke-width: .15; stroke-dasharray: .8 .5; }
+.chart text { font: 600 .7px var(--f-mono); fill: var(--muted); letter-spacing: .05px; }
+.chart .ink { fill: #efe4d1; }
+.chart .cam { cursor: pointer; }
+.chart .cam .hit { fill: transparent; }
+.chart .cam .ring { fill: var(--card); stroke: var(--red); stroke-width: .28; }
+.chart .cam.bts .ring { stroke: var(--teal); }
+.chart .cam .num { font: 700 1.05px var(--f-body); fill: var(--red); }
+.chart .cam.bts .num { fill: var(--teal); }
+.chart .cam.on .ring { fill: var(--red); } .chart .cam.bts.on .ring { fill: var(--teal); }
+.chart .cam.on .num { fill: #fff; }
+.chart .cam.pending .ring { stroke-dasharray: .35 .25; }
+.chart .cam:focus { outline: none; } .chart .cam:focus-visible .ring { stroke: var(--accent); stroke-width: .4; }
+.chart .cam .lbl { font: 600 .78px var(--f-body); fill: var(--ink); }
+.chart .cam .lbl.onstage { fill: #efe4d1; }
+
+.seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.seat { text-align: left; border: 1.5px solid var(--line); background: var(--paper); border-radius: 12px; padding: 10px 12px; min-height: 56px; display: grid; gap: 1px; }
+.seat b { font-weight: 700; } .seat span { font-size: 12px; color: var(--muted); }
+.seat .k { font: 700 11px/1 var(--f-mono); color: var(--red); } .seat.bts .k { color: var(--teal); }
+.seat[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.seat[aria-pressed="true"] span { color: inherit; opacity: .8; }
+
+/* transport */
+.transport { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.bigplay { width: 64px; height: 64px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.bigplay svg { width: 28px; height: 28px; fill: currentColor; }
+.skip { width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--ink); background: transparent; font: 700 13px var(--f-mono); }
+.time { font: 600 13px var(--f-mono); color: var(--muted); display: flex; justify-content: space-between; }
+input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; }
+.toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid var(--line); }
+.toggle:last-child { border-bottom: 0; }
+.toggle input[type=checkbox] { width: 24px; height: 24px; accent-color: var(--accent); flex: none; }
+.toggle span { display: grid; } .toggle small { color: var(--muted); }
+.seg { display: flex; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; }
+.seg button { flex: 1; border: 0; background: transparent; padding: 10px 6px; min-height: 44px; color: var(--muted); font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.pressed[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* director */
+.showcode { font: 700 34px/1 var(--f-mono); letter-spacing: .14em; color: var(--accent); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font: 700 12px/1 var(--f-mono); letter-spacing: .08em; border: 1.5px solid var(--muted); color: var(--muted); }
+.pill.live { background: var(--err); border-color: var(--err); color: #fff; }
+.camgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.take { border: 2px solid var(--line); background: var(--paper); border-radius: 14px; padding: 14px; min-height: 92px; text-align: left; display: grid; gap: 2px; align-content: start; }
+.take .k { font: 700 12px var(--f-mono); color: var(--red); } .take.bts .k { color: var(--teal); }
+.take b { font: 400 20px/1.15 var(--f-serif); } .take span { font-size: 12px; color: var(--muted); }
+.take[aria-pressed="true"] { border-color: var(--err); box-shadow: inset 0 0 0 2px var(--err); }
+.take[aria-pressed="true"] .k::after { content: ' · ON AIR'; color: var(--err); }
+.subjects button { border-radius: 999px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: calc(100% - 32px); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+.toast.on { opacity: 1; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="kicker">Every Seat</span><h1 id="title">Remote</h1></div>
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button role="tab" id="tabRemote" aria-selected="true" aria-controls="remote">Remote</button>
+      <button role="tab" id="tabDirector" aria-selected="false" aria-controls="director">Director</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ====================================================== REMOTE -->
+    <section id="remote" role="tabpanel" aria-labelledby="tabRemote">
+      <div class="card stack" id="rConnect">
+        <h2>Connect to a viewer</h2>
+        <p class="muted" style="margin:0">On the headset or screen that’s playing Every Seat, open the program’s <b>Access</b> page and tap <b>Show a pairing code</b>. In a headset, the code is printed on the program. Enter it here.</p>
+        <form id="rForm" class="stack" autocomplete="off">
+          <input id="rCode" class="codein" maxlength="7" placeholder="ABC-123" aria-label="Pairing code" spellcheck="false" autocapitalize="characters" autocomplete="one-time-code" inputmode="text">
+          <div class="row"><button class="btn primary" id="rGo" type="submit">Connect</button></div>
+          <p class="err" id="rErr" role="alert"></p>
+        </form>
+      </div>
+
+      <div id="rLive" class="stack" hidden>
+        <div class="card status" aria-live="polite">
+          <span class="dot" id="rDot"></span>
+          <div style="flex:1">
+            <div class="statusline" id="rStatus">Connecting…</div>
+            <div class="small muted" id="rSub"></div>
+            <p class="hint" id="rHint" hidden></p>
+          </div>
+          <button class="btn" id="rLeave">Disconnect</button>
+        </div>
+
+        <div class="grid2">
+          <div class="card stack">
+            <h3>Seating chart · tap a seat</h3>
+            <svg class="chart" id="rChart" viewBox="-14 -12.6 28 36" role="group" aria-label="Seating chart"></svg>
+            <div class="seats" id="rSeats" role="group" aria-label="Seats"></div>
+          </div>
+
+          <div class="stack">
+            <div class="card stack">
+              <h3>Show</h3>
+              <div class="transport">
+                <button class="skip" id="rBack" aria-label="Back 10 seconds">−10</button>
+                <div style="display:grid;justify-items:center"><button class="bigplay" id="rPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="rPlayIcon"><path d="M7 4.5v15l12.5-7.5z"/></svg></button></div>
+                <button class="skip" id="rFwd" aria-label="Forward 10 seconds">+10</button>
+              </div>
+              <div>
+                <input type="range" id="rScrub" min="0" max="150" step="1" value="0" aria-label="Position in the show">
+                <div class="time"><span id="rNow">00:00</span><span id="rSection"></span><span id="rEnd">02:30</span></div>
+              </div>
+              <div class="row">
+                <button class="btn pressed" id="rGuided" aria-pressed="true">Director’s cut</button>
+                <button class="btn" id="rMenu" hidden>Hide program</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Access &amp; sound</h3>
+              <label class="toggle"><span><b>Captions</b><small>Lyrics and sound cues</small></span><input type="checkbox" data-set="captions"></label>
+              <div class="toggle"><span><b>Caption size</b></span>
+                <div class="seg" data-seg="capsize" style="min-width:12rem"><button data-v="small">S</button><button data-v="medium">M</button><button data-v="large">L</button></div></div>
+              <label class="toggle"><span><b>Audio description</b><small>A voice describes the stage</small></span><input type="checkbox" data-set="ad"></label>
+              <label class="toggle"><span><b>Hands-free</b><small>Guided view, large captions</small></span><input type="checkbox" data-set="hands"></label>
+              <label class="toggle"><span><b>Reduce motion</b></span><input type="checkbox" data-set="motion"></label>
+              <label class="toggle"><span><b>Large controls</b></span><input type="checkbox" data-set="large"></label>
+              <div class="toggle"><span><b>Sound</b></span>
+                <div class="seg" data-seg="mix" style="min-width:12rem"><button data-v="binaural">Binaural 3D</button><button data-v="board">Board mix</button></div></div>
+              <label class="toggle" style="display:grid;gap:4px;padding:8px 0"><span><b>Vocal clarity</b><small id="vocalVal">+0 dB</small></span><input type="range" min="0" max="12" step="1" data-range="vocal"></label>
+              <label class="toggle" style="display:grid;gap:4px;padding:8px 0"><span><b>Crowd noise</b><small id="crowdVal">60%</small></span><input type="range" min="0" max="100" step="5" data-range="crowd"></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================== DIRECTOR -->
+    <section id="director" role="tabpanel" aria-labelledby="tabDirector" hidden>
+      <div id="dConnect" class="grid2">
+        <form class="card stack" id="dNewForm" autocomplete="off">
+          <h2>Start a live show</h2>
+          <p class="muted small" style="margin:0">Viewers who enter your show code follow your camera cuts in their guided view.</p>
+          <label class="field">Show title<input class="textin" id="dTitle" maxlength="60" placeholder="Every Angle"></label>
+          <label class="field">Director key<input class="textin" id="dKey" type="password" autocomplete="current-password" required></label>
+          <label class="row small"><input type="checkbox" id="dRemember"> Remember the key on this device</label>
+          <div class="row"><button class="btn primary" type="submit">Start show</button></div>
+          <p class="err" id="dNewErr" role="alert"></p>
+        </form>
+        <form class="card stack" id="dJoinForm" autocomplete="off">
+          <h2>Take over a show</h2>
+          <p class="muted small" style="margin:0">Continue calling a show from this device.</p>
+          <label class="field">Show code<input class="codein" id="dCode" maxlength="7" placeholder="ABC-123" spellcheck="false" autocapitalize="characters"></label>
+          <label class="field">Director key<input class="textin" id="dKey2" type="password" autocomplete="current-password" required></label>
+          <div class="row"><button class="btn" type="submit">Take over</button></div>
+          <p class="err" id="dJoinErr" role="alert"></p>
+        </form>
+      </div>
+
+      <div id="dLive" class="stack" hidden>
+        <div class="card row spread">
+          <div>
+            <div class="kicker" id="dShowTitle">Show</div>
+            <div class="showcode" id="dShowCode">—</div>
+            <div class="small muted">Viewers enter this code on the program’s Access page, or open <a id="dLink" href="#">a direct link</a>.</div>
+          </div>
+          <div class="stack" style="justify-items:end">
+            <span class="pill" id="dPill">OFF AIR</span>
+            <span class="small muted" id="dViewers">0 viewers</span>
+          </div>
+        </div>
+        <div class="card stack">
+          <div class="row spread">
+            <h3 style="margin:0">Frame · then tap a camera to take it</h3>
+            <span class="small muted">Keys 1–6 take a camera</span>
+          </div>
+          <div class="seg subjects" id="dSubjects" role="group" aria-label="What to frame"></div>
+          <div class="camgrid" id="dCams"></div>
+        </div>
+        <div class="row">
+          <button class="btn accent" id="dLiveBtn">Go live</button>
+          <button class="btn" id="dCopy">Copy viewer link</button>
+          <button class="btn danger" id="dEnd">End show</button>
+          <button class="btn" id="dLeave">Leave</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+  const API = new URL('../api/', location.href).href;
+  const PLAYER = new URL('../', location.href).href;
+  const $ = id => document.getElementById(id);
+  const qs = new URLSearchParams(location.search);
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const fmt = t => { t = Math.max(0, Math.floor(t || 0)); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+  const cleanCode = v => String(v || '').toUpperCase().replace(/[\s-]+/g, '');
+  const CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
+  const pretty = c => c.slice(0, 3) + '-' + c.slice(3);
+
+  class ApiError extends Error { constructor(s, c, m, f) { super(m); this.status = s; this.code = c; this.field = f; } }
+  async function api(method, route, { body, token, query = '' } = {}) {
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 8000);
+    let res;
+    try {
+      res = await fetch(`${API}?r=${route}${query}`, { method, signal: ctrl.signal, cache: 'no-store',
+        headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { 'X-ES-Token': token } : {}) },
+        body: body ? JSON.stringify(body) : undefined });
+    } catch { throw new ApiError(0, 'network', 'Can’t reach the server. Check your connection.'); }
+    finally { clearTimeout(timer); }
+    if (res.status === 204) return null;
+    let data = null; try { data = await res.json(); } catch {}
+    if (!res.ok) { const e = (data && data.error) || {}; throw new ApiError(res.status, e.code || 'error', e.message || `Error ${res.status}`, e.field); }
+    return data;
+  }
+
+  let toastT = 0;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2600); }
+
+  // Code boxes: uppercase, drop confusable characters' separators, auto-dash.
+  function codeBox(el) {
+    el.addEventListener('input', () => {
+      const c = cleanCode(el.value).replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      el.value = c.length > 3 ? pretty(c.padEnd(6, ' ')).trimEnd() : c;
+    });
+  }
+  ['rCode', 'dCode'].forEach(id => codeBox($(id)));
+
+  /* ---------------------------------------------------------------- tabs */
+  function setMode(mode) {
+    const remote = mode !== 'director';
+    $('tabRemote').setAttribute('aria-selected', String(remote));
+    $('tabDirector').setAttribute('aria-selected', String(!remote));
+    $('remote').hidden = !remote; $('director').hidden = remote;
+    $('title').textContent = remote ? 'Remote' : 'Director';
+    store.set('es_mode', remote ? 'remote' : 'director');
+  }
+  $('tabRemote').addEventListener('click', () => setMode('remote'));
+  $('tabDirector').addEventListener('click', () => setMode('director'));
+  document.querySelector('.tabs').addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const r = $('tabRemote').getAttribute('aria-selected') !== 'true'; setMode(r ? 'remote' : 'director'); (r ? $('tabRemote') : $('tabDirector')).focus(); }
+  });
+
+  /* ---------------------------------------------------------------- config */
+  let CFG = null;
+  async function loadConfig() {
+    for (let i = 0; ; i++) {
+      try { CFG = await api('GET', '/config'); return; }
+      catch (e) { if (i === 0) toast('Waiting for the server…'); await sleep(Math.min(10000, 1500 * (i + 1))); }
+    }
+  }
+
+  /* ============================================================== REMOTE */
+  const R = { room: null, token: null, code: null, status: null, running: false, pending: {}, failures: 0 };
+
+  function buildChart() {
+    const svg = $('rChart'); const NS = 'http://www.w3.org/2000/svg';
+    const mk = (tag, a, p = svg) => { const n = document.createElementNS(NS, tag); for (const k in a) n.setAttribute(k, a[k]); p.appendChild(n); return n; };
+    svg.innerHTML = '';
+    mk('rect', { x: -13.6, y: -12.2, width: 27.2, height: 11.2, rx: .3, class: 'wing' });
+    mk('rect', { x: -9.6, y: -12.2, width: 19.2, height: 11.2, class: 'deck' });
+    const t = (x, y, s, cls = '') => { const n = mk('text', { x, y, 'text-anchor': 'middle', class: cls }); n.textContent = s; };
+    t(0, -10.6, 'STAGE', 'ink'); t(-11.6, -10.6, 'WINGS', 'ink'); t(11.6, -10.6, 'WINGS', 'ink');
+    for (let i = 0; i < 13; i++) { const z = 2 + i; mk('line', { x1: -9.3, x2: -1, y1: z, y2: z, class: 'stalls' }); mk('line', { x1: 1, x2: 9.3, y1: z, y2: z, class: 'stalls' }); }
+    t(-10.6, 15.2, 'STALLS');
+    mk('line', { x1: -12.8, x2: 12.8, y1: 15.7, y2: 15.7, class: 'rail' });
+    for (let i = 0; i < 5; i++) { const z = 17 + i * 1.05; mk('line', { x1: -12, x2: -1, y1: z, y2: z, class: 'stalls' }); mk('line', { x1: 1, x2: 12, y1: z, y2: z, class: 'stalls' }); }
+    t(0, 22.6, 'BALCONY · UPPER LEVEL');
+    for (const c of CFG.cams) {
+      const g = mk('g', { class: 'cam' + (c.bts ? ' bts' : ''), tabindex: 0, role: 'button', 'data-cam': c.id, 'aria-label': `${c.name}, ${c.sub}` });
+      mk('circle', { cx: c.x, cy: c.z, r: 2, class: 'hit' }, g);
+      mk('circle', { cx: c.x, cy: c.z, r: 1.15, class: 'ring' }, g);
+      const n = mk('text', { x: c.x, y: c.z + .38, 'text-anchor': 'middle', class: 'num' }, g); n.textContent = c.key;
+      const right = c.x < 6;
+      const l = mk('text', { x: c.x + (right ? 1.6 : -1.6), y: c.z + .3, 'text-anchor': right ? 'start' : 'end', class: 'lbl' + (c.z < -1 ? ' onstage' : '') }, g); l.textContent = c.name;
+      g.addEventListener('click', () => pickSeat(c.id));
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickSeat(c.id); } });
+    }
+    const list = $('rSeats'); list.innerHTML = '';
+    for (const c of CFG.cams) {
+      const b = document.createElement('button');
+      b.className = 'seat' + (c.bts ? ' bts' : ''); b.dataset.cam = c.id; b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = `<span class="k">CAM ${c.key} · ${c.bts ? 'BACKSTAGE' : 'AUDIENCE'}</span><b></b><span></span>`;
+      b.querySelector('b').textContent = c.name; b.querySelectorAll('span')[1].textContent = c.sub;
+      b.addEventListener('click', () => pickSeat(c.id));
+      list.appendChild(b);
+    }
+    $('rScrub').max = CFG.end; $('rEnd').textContent = fmt(CFG.end);
+  }
+
+  // Optimistic local values win for a few seconds so controls don't flick back while the viewer catches up.
+  const HOLD_MS = 3500;
+  const held = key => R.pending[key] && Date.now() - R.pending[key].at < HOLD_MS ? R.pending[key] : null;
+  const hold = (key, value) => { R.pending[key] = { value, at: Date.now() }; };
+
+  async function send(cmd, holdKey, holdValue) {
+    if (!R.room) return;
+    if (holdKey) { hold(holdKey, holdValue); render(); }
+    try {
+      const d = await api('POST', `/rooms/${R.room}/commands`, { body: cmd, token: R.token });
+      if (!d.viewer_online) toast('Sent. The viewer seems to be offline right now.');
+    } catch (e) {
+      if (holdKey) delete R.pending[holdKey];
+      if (e.status === 403 || e.status === 404) { disconnect('The viewer ended this pairing. Ask for a new code.'); return; }
+      toast(e.message); render();
+    }
+  }
+
+  function pickSeat(id) { send({ type: 'seat', cam: id }, 'cam', id); hold('guided', false); }
+
+  function render() {
+    const s = R.status || {};
+    const st = s.status || null;
+    const settings = (st && st.settings) || {};
+    const cam = held('cam') ? held('cam').value : st && st.cam;
+    document.querySelectorAll('#rChart .cam').forEach(g => {
+      g.classList.toggle('on', g.dataset.cam === cam);
+      g.classList.toggle('pending', !!held('cam') && g.dataset.cam === held('cam').value && (!st || st.cam !== held('cam').value));
+      g.setAttribute('aria-pressed', String(g.dataset.cam === cam));
+    });
+    document.querySelectorAll('#rSeats .seat').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === cam)));
+
+    const playing = held('playing') ? held('playing').value : !!(st && st.playing);
+    $('rPlay').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    $('rPlayIcon').innerHTML = playing ? '<path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/>' : '<path d="M7 4.5v15l12.5-7.5z"/>';
+    if (!R.scrubbing && st) {
+      const t = held('t') ? held('t').value : st.t + (st.playing && s.age != null ? Math.min(s.age, 3) : 0);
+      $('rScrub').value = t; $('rNow').textContent = fmt(t);
+    }
+    $('rSection').textContent = st && st.section ? st.section : '';
+    const guided = held('guided') ? held('guided').value : !!(st && st.guided);
+    $('rGuided').setAttribute('aria-pressed', String(guided));
+    $('rGuided').textContent = guided ? (st && st.live ? 'Following live director' : 'Following director’s cut') : 'Director’s cut off';
+    const menuOpen = held('menu') ? held('menu').value : !(st && st.menu_open === false);
+    $('rMenu').hidden = !(st && st.xr);
+    $('rMenu').textContent = menuOpen ? 'Hide program in headset' : 'Show program in headset';
+
+    document.querySelectorAll('[data-set]').forEach(el => {
+      const k = el.dataset.set; const v = held('s:' + k) ? held('s:' + k).value : settings[k];
+      if (typeof v === 'boolean') el.checked = v;
+    });
+    document.querySelectorAll('[data-seg]').forEach(seg => {
+      const k = seg.dataset.seg; const v = held('s:' + k) ? held('s:' + k).value : settings[k];
+      seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+    });
+    document.querySelectorAll('[data-range]').forEach(el => {
+      const k = el.dataset.range; if (document.activeElement === el && R.sliding === k) return;
+      const v = held('s:' + k) ? held('s:' + k).value : settings[k];
+      if (typeof v === 'number') el.value = v;
+    });
+    $('vocalVal').textContent = `+${document.querySelector('[data-range=vocal]').value} dB`;
+    $('crowdVal').textContent = `${document.querySelector('[data-range=crowd]').value}%`;
+
+    // connection line
+    const dot = $('rDot'), hint = $('rHint');
+    hint.hidden = true;
+    if (!R.status) { dot.className = 'dot wait'; $('rStatus').textContent = `Connected to ${R.code}`; $('rSub').textContent = 'Waiting for the viewer…'; return; }
+    if (!s.viewer_online) {
+      dot.className = 'dot'; $('rStatus').textContent = 'Viewer offline';
+      $('rSub').textContent = 'The headset or screen hasn’t checked in for a few seconds. It may be asleep or have lost Wi-Fi.';
+      return;
+    }
+    dot.className = 'dot on';
+    const camName = (CFG.cams.find(c => c.id === (st && st.cam)) || {}).name || '—';
+    $('rStatus').textContent = `${st && st.xr ? 'In headset' : 'On screen'} · ${camName} · ${fmt(st && st.t)}`;
+    $('rSub').textContent = `${st && st.playing ? 'Playing' : 'Paused'}${st && st.live ? ' · following a live director' : ''} · code ${R.code}`;
+    if (st && st.audio_locked && st.started !== undefined) {
+      hint.hidden = false;
+      hint.textContent = st.xr ? 'Sound starts when the viewer pulls a trigger or pinches once.' : 'Sound starts after the viewer taps “Take your seat” or the play button once on their screen.';
+    } else if (st && st.started === false) {
+      hint.hidden = false; hint.textContent = 'The viewer hasn’t taken their seat yet. Play will start the show for them.';
+    }
+  }
+
+  async function connect(raw) {
+    const code = cleanCode(raw);
+    $('rErr').textContent = '';
+    if (!CODE_RE.test(code)) { $('rErr').textContent = 'Codes are 6 letters and numbers, like K7Q-4MZ.'; $('rCode').focus(); return; }
+    $('rGo').disabled = true;
+    try {
+      const d = await api('POST', '/rooms/join', { body: { code } });
+      Object.assign(R, { room: d.room, token: d.token, code: d.display_code, status: null, pending: {}, failures: 0 });
+      store.set('es_remote', { room: d.room, token: d.token, code: d.display_code });
+      showRemoteLive();
+    } catch (e) { $('rErr').textContent = e.message; }
+    finally { $('rGo').disabled = false; }
+  }
+
+  function showRemoteLive() {
+    $('rConnect').hidden = true; $('rLive').hidden = false;
+    render(); pollRemote();
+  }
+
+  function disconnect(message) {
+    const { room, token } = R;
+    R.running = false; Object.assign(R, { room: null, token: null, code: null, status: null });
+    store.del('es_remote');
+    $('rLive').hidden = true; $('rConnect').hidden = false;
+    $('rErr').textContent = message || '';
+    return { room, token };
+  }
+
+  async function pollRemote() {
+    if (R.running) return;
+    R.running = true;
+    const room = R.room;
+    while (R.running && R.room === room) {
+      try {
+        R.status = await api('GET', `/rooms/${room}/status`, { token: R.token });
+        R.failures = 0; render();
+      } catch (e) {
+        if (e.status === 403 || e.status === 404) { disconnect('The viewer ended this pairing. Ask for a new code.'); break; }
+        R.failures++;
+        if (R.failures === 3) { $('rDot').className = 'dot'; $('rStatus').textContent = 'Reconnecting…'; $('rSub').textContent = e.message; }
+      }
+      await sleep(Math.min(15000, (document.hidden ? 5000 : (CFG.poll_ms || 1000)) * (1 + Math.min(R.failures, 6))));
+    }
+  }
+
+  $('rForm').addEventListener('submit', e => { e.preventDefault(); connect($('rCode').value); });
+  $('rLeave').addEventListener('click', async () => {
+    const { room, token } = disconnect('Disconnected.');
+    if (room) try { await api('DELETE', `/rooms/${room}`, { token }); } catch {}
+  });
+  $('rPlay').addEventListener('click', () => {
+    const playing = held('playing') ? held('playing').value : !!(R.status && R.status.status && R.status.status.playing);
+    send({ type: playing ? 'pause' : 'play' }, 'playing', !playing);
+  });
+  const curT = () => +$('rScrub').value;
+  $('rBack').addEventListener('click', () => send({ type: 'skip', by: -10 }, 't', Math.max(0, curT() - 10)));
+  $('rFwd').addEventListener('click', () => send({ type: 'skip', by: 10 }, 't', Math.min(CFG.end, curT() + 10)));
+  $('rScrub').addEventListener('input', () => { R.scrubbing = true; $('rNow').textContent = fmt(curT()); });
+  $('rScrub').addEventListener('change', () => { R.scrubbing = false; send({ type: 'seek', t: curT() }, 't', curT()); });
+  $('rGuided').addEventListener('click', () => { const on = $('rGuided').getAttribute('aria-pressed') !== 'true'; send({ type: 'guided', on }, 'guided', on); });
+  $('rMenu').addEventListener('click', () => { const open = $('rMenu').textContent.startsWith('Show'); send({ type: 'menu', open }, 'menu', open); });
+  document.querySelectorAll('[data-set]').forEach(el => el.addEventListener('change', () =>
+    send({ type: 'setting', key: el.dataset.set, value: el.checked }, 's:' + el.dataset.set, el.checked)));
+  document.querySelectorAll('[data-seg]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () =>
+    send({ type: 'setting', key: seg.dataset.seg, value: b.dataset.v }, 's:' + seg.dataset.seg, b.dataset.v))));
+  document.querySelectorAll('[data-range]').forEach(el => {
+    el.addEventListener('input', () => { R.sliding = el.dataset.range; hold('s:' + el.dataset.range, +el.value); render(); });
+    el.addEventListener('change', () => { R.sliding = null; send({ type: 'setting', key: el.dataset.range, value: +el.value }, 's:' + el.dataset.range, +el.value); });
+  });
+  addEventListener('keydown', e => {
+    if ($('remote').hidden || !R.room || e.target.matches('input, textarea')) return;
+    if (/^[1-6]$/.test(e.key) && CFG.cams[+e.key - 1]) pickSeat(CFG.cams[+e.key - 1].id);
+    else if (e.key === ' ' && !e.target.matches('button')) { e.preventDefault(); $('rPlay').click(); }
+  });
+
+  /* ============================================================ DIRECTOR */
+  const D = { code: null, token: null, title: '', subject: 'wide', show: null, running: false, failures: 0 };
+
+  function buildDirector() {
+    const subj = $('dSubjects'); subj.innerHTML = '';
+    for (const s of CFG.subjects) {
+      const b = document.createElement('button'); b.textContent = s.name; b.dataset.v = s.id;
+      b.setAttribute('aria-pressed', String(s.id === D.subject));
+      b.addEventListener('click', () => { D.subject = s.id; subj.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+      subj.appendChild(b);
+    }
+    const grid = $('dCams'); grid.innerHTML = '';
+    for (const c of CFG.cams) {
+      const b = document.createElement('button');
+      b.className = 'take' + (c.bts ? ' bts' : ''); b.dataset.cam = c.id; b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = `<span class="k">CAM ${c.key}</span><b></b><span></span>`;
+      b.querySelector('b').textContent = c.name; b.querySelectorAll('span')[1].textContent = c.sub;
+      b.addEventListener('click', () => take(c.id));
+      grid.appendChild(b);
+    }
+    try { const k = store.get('es_dkey'); if (k) { $('dKey').value = k; $('dKey2').value = k; $('dRemember').checked = true; } } catch {}
+  }
+
+  function renderDirector() {
+    const s = D.show || {};
+    $('dShowTitle').textContent = D.title || s.title || 'Show';
+    $('dShowCode').textContent = D.code ? pretty(D.code) : '—';
+    const link = `${PLAYER}?show=${D.code || ''}`;
+    $('dLink').href = link;
+    const live = !!s.live;
+    $('dPill').textContent = live ? 'ON AIR' : 'OFF AIR'; $('dPill').classList.toggle('live', live);
+    $('dLiveBtn').textContent = live ? 'Pause live cut' : 'Go live';
+    $('dViewers').textContent = `${s.viewers || 0} viewer${s.viewers === 1 ? '' : 's'} following`;
+    const onAir = live && s.cue ? s.cue.cam : null;
+    document.querySelectorAll('#dCams .take').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === onAir)));
+  }
+
+  function directorErr(e, el) {
+    if (e.code === 'director_disabled') $(el).textContent = 'Director mode is switched off on this server. Set a director key in api/config.local.php.';
+    else $(el).textContent = e.message;
+  }
+
+  function startDirector(d, key) {
+    Object.assign(D, { code: cleanCode(d.code), token: d.token, title: d.title, show: null, failures: 0 });
+    store.set('es_director', { code: D.code, token: D.token, title: D.title });
+    if ($('dRemember').checked && key) store.set('es_dkey', key); else if (!$('dRemember').checked) store.del('es_dkey');
+    $('dConnect').hidden = true; $('dLive').hidden = false;
+    renderDirector(); pollDirector();
+  }
+
+  function leaveDirector(msg) {
+    D.running = false; Object.assign(D, { code: null, token: null, show: null });
+    store.del('es_director');
+    $('dLive').hidden = true; $('dConnect').hidden = false;
+    if (msg) toast(msg);
+  }
+
+  async function pollDirector() {
+    if (D.running) return;
+    D.running = true; const code = D.code;
+    while (D.running && D.code === code) {
+      try {
+        D.show = await api('GET', `/shows/${code}`); D.failures = 0;
+        if (D.show.ended) { leaveDirector('The show has ended.'); break; }
+        renderDirector();
+      } catch (e) {
+        if (e.status === 404) { leaveDirector('This show no longer exists.'); break; }
+        D.failures++; if (D.failures === 3) toast('Reconnecting to the server…');
+      }
+      await sleep(Math.min(15000, (document.hidden ? 5000 : 1500) * (1 + Math.min(D.failures, 6))));
+    }
+  }
+
+  async function take(cam) {
+    if (!D.code) return;
+    // show it on air at once; the server confirms
+    D.show = { ...(D.show || {}), live: true, cue: { cam, subject: D.subject } }; renderDirector();
+    try { await api('POST', `/shows/${D.code}/cue`, { body: { cam, subject: D.subject }, token: D.token }); }
+    catch (e) {
+      if (e.status === 401 || e.status === 403) { leaveDirector('Another device took over this show, or your session ended.'); return; }
+      if (e.code === 'show_ended') { leaveDirector('The show has ended.'); return; }
+      toast(e.message);
+    }
+  }
+
+  $('dNewForm').addEventListener('submit', async e => {
+    e.preventDefault(); $('dNewErr').textContent = '';
+    const key = $('dKey').value; const title = $('dTitle').value.trim() || CFG.title;
+    try { startDirector(await api('POST', '/shows', { body: { key, title } }), key); } catch (err) { directorErr(err, 'dNewErr'); }
+  });
+  $('dJoinForm').addEventListener('submit', async e => {
+    e.preventDefault(); $('dJoinErr').textContent = '';
+    const code = cleanCode($('dCode').value);
+    if (!CODE_RE.test(code)) { $('dJoinErr').textContent = 'Codes are 6 letters and numbers, like K7Q-4MZ.'; return; }
+    const key = $('dKey2').value;
+    try { startDirector(await api('POST', `/shows/${code}/director`, { body: { key } }), key); } catch (err) { directorErr(err, 'dJoinErr'); }
+  });
+  $('dLiveBtn').addEventListener('click', async () => {
+    const live = !(D.show && D.show.live);
+    try { await api('POST', `/shows/${D.code}/live`, { body: { live }, token: D.token }); D.show = { ...(D.show || {}), live }; renderDirector(); }
+    catch (e) { if (e.status === 401 || e.status === 403) leaveDirector('Your director session ended.'); else toast(e.message); }
+  });
+  $('dCopy').addEventListener('click', async () => {
+    const link = $('dLink').href;
+    try { await navigator.clipboard.writeText(link); toast('Viewer link copied.'); }
+    catch { prompt('Copy this link:', link); }
+  });
+  $('dEnd').addEventListener('click', async () => {
+    if (!confirm('End the show? Viewers go back to the built-in director’s cut.')) return;
+    try { await api('DELETE', `/shows/${D.code}`, { token: D.token }); } catch {}
+    leaveDirector('Show ended.');
+  });
+  $('dLeave').addEventListener('click', () => leaveDirector('You left the show. It keeps its last shot; take it over again with the code and key.'));
+  addEventListener('keydown', e => {
+    if ($('director').hidden || !D.code || e.target.matches('input, textarea')) return;
+    if (/^[1-6]$/.test(e.key) && CFG.cams[+e.key - 1]) take(CFG.cams[+e.key - 1].id);
+  });
+
+  /* ---------------------------------------------------------------- start */
+  (async () => {
+    setMode(qs.get('mode') === 'director' ? 'director' : (store.get('es_mode') || 'remote'));
+    await loadConfig();
+    buildChart(); buildDirector();
+    const r = store.get('es_remote');
+    const linkCode = qs.get('code');
+    if (linkCode) { $('rCode').value = linkCode; $('rCode').dispatchEvent(new Event('input')); setMode('remote'); connect(linkCode); }
+    else if (r && r.room && r.token) { Object.assign(R, r); showRemoteLive(); }
+    const d = store.get('es_director');
+    if (d && d.code && d.token) { Object.assign(D, d); $('dConnect').hidden = true; $('dLive').hidden = false; renderDirector(); pollDirector(); }
+  })();
+
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    addEventListener('load', () => navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>

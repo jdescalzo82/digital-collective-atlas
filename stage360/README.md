@@ -87,6 +87,50 @@ The player is Quest-first:
 - **Comfort**: no artificial smooth motion, cuts fade through black, and the caption strip suggests a break after 20 minutes.
 - **PWA**: `manifest.webmanifest`, icons and `sw.js` (network-first page, cached three.js) make it installable. Package for the Horizon Store with Meta's Bubblewrap fork: `bubblewrap init --manifest=https://toolkityourlife.com/EverySeat/manifest.webmanifest --metaquest`, then upload the signed APK with `ovr-platform-util`. Deep links: `?seat=balcony`, `?hands=1`, `?guided=0`.
 
+## Backend: pairing, remotes and a live director (`api/`)
+
+The player is still a static page, but `api/` adds a small PHP + SQLite backend
+(any cPanel plan can run it; no Composer, no rewrite rules) for everything that
+needs two devices to agree:
+
+- **Phone/Mac remote.** The viewer opens the program's **Access** page and taps
+  **Show a pairing code** (in a headset the code is printed on the program and
+  pairing starts automatically). On a phone, Mac or any browser,
+  `remote/` takes that code and can then pick seats from the same seating
+  chart, play/pause, seek, toggle the director's cut, and set captions, audio
+  description, hands-free, motion, size, mix, vocal clarity and crowd level.
+  Built for a carer setting up the show for someone in a headset.
+- **Live director mode.** The `remote/` page's **Director** tab (key required,
+  set in `api/config.local.php`) starts a live show with its own code. Viewers
+  who enter it follow the director's camera cuts in their guided view instead
+  of the built-in script; `?show=CODE` links open straight into it.
+- **How it talks.** Plain polling (~1/s, backing off when hidden or failing):
+  LL-HLS-style push isn't possible on shared hosting, and at these payload
+  sizes polling is fine. Commands are validated server-side against the camera
+  list and setting ranges; codes are 6 characters from an unambiguous alphabet;
+  tokens are stored hashed; rooms, shows and commands all expire on their own.
+- **Deploying to cPanel.** Upload `index.html`, `link.js`, `sw.js`, `.htaccess`,
+  `remote/` and `api/` (keep `api/.htaccess` and `api/data/.htaccess`; they stop
+  the web server serving the config and database). Then copy
+  `api/config.local.sample.php` to `api/config.local.php` and set a long random
+  director key. Nothing else to install: the SQLite database creates itself.
+  If the API is absent (plain static hosting), the player hides all of this and
+  works exactly as before.
+- **Tests.** `python3 -m unittest tests.test_everyseat_api` (repo root) runs the
+  API end to end under PHP's built-in server, and checks the camera list in
+  `api/config.php` still matches the player's.
+
+## Native apps (`apple/`)
+
+`apple/` holds **Every Seat Remote**, a SwiftUI app for iPhone, iPad and Mac
+with the same two modes (Remote and Director) against the same API. On a Mac:
+`brew install xcodegen && cd stage360/apple && xcodegen && open EverySeatRemote.xcodeproj`,
+then set your team under Signing & Capabilities. The server address is
+changeable in-app (defaults to `toolkityourlife.com/EverySeat/`), the director
+key lives in the Keychain, and the Mac build is sandboxed with
+outgoing-network-only entitlements. The web `remote/` page is itself an
+installable PWA (Add to Home Screen / Dock) if you want the app without Xcode.
+
 ## Hospice, care and accessibility
 
 - **One-tap start** for a carer: send a link or QR code that opens straight into the guided view, hands-free mode and large captions.

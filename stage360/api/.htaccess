@@ -1,0 +1,16 @@
+# Every Seat API
+Options -Indexes
+DirectoryIndex index.php
+
+# Only index.php is reachable; config, libraries and the database are not.
+<FilesMatch "^(config\.php|config\.local\.php|config\.local\.sample\.php|lib\.php)$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\.(sqlite|sqlite3|db|db-wal|db-shm|sqlite-wal|sqlite-shm)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Cache-Control "no-store"
+</IfModule>

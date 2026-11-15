@@ -1,0 +1,5 @@
+EverySeatRemote.xcodeproj/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.build/

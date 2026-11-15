@@ -315,6 +315,14 @@ input[type=range] { accent-color: var(--amber); width: 100%; }
 .filebtn:hover { border-color: var(--teal); color: var(--fg); }
 .filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .note { color: var(--muted); font-size: calc(12px * var(--ui)); margin: 0; }
+.linkbox { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; gap: 14px; }
+.linkbox h3 { margin: 0; }
+.linkrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.linkbtn { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 10px; padding: 9px 12px; font-size: calc(13px * var(--ui)); min-height: calc(40px * var(--ui)); cursor: pointer; }
+.linkbtn:hover, .linkbtn:focus-visible { border-color: var(--amber); }
+.paircode { font: 700 calc(26px * var(--ui))/1 var(--f-mono); letter-spacing: .12em; color: var(--amber); }
+.codein { font: 500 calc(16px * var(--ui))/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; width: 8.5em; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--fg); min-height: calc(40px * var(--ui)); }
+.linkerr { color: #ff8a7a; }
 kbd { font: 500 11px/1 var(--f-mono); border: 1px solid var(--line); border-radius: 4px; padding: 2px 5px; }
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: calc(13px * var(--ui)); color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .guidechip[aria-pressed="true"] .dot, .chart .camdot.pick .halo { animation: none; } .fade { transition: none; } .page.turn-in, .page.turn-back { animation: none; } }
@@ -423,6 +431,29 @@ kbd { font: 500 11px/1 var(--f-mono); border: 1px solid var(--line); border-radi
           <label class="switch"><span><strong>Reduce motion</strong><small>Guided view cuts instead of panning</small></span><input type="checkbox" id="optMotion"></label>
           <label class="switch"><span><strong>Large controls</strong></span><input type="checkbox" id="optLarge"></label>
         </div>
+        <section class="setting linkbox" id="linkBox" aria-labelledby="linkH" hidden>
+          <h3 id="linkH">Remote &amp; live</h3>
+          <div class="setting">
+            <span>Control from a phone or Mac</span>
+            <small>Someone else (a carer, a friend) can pick seats and change settings for you.</small>
+            <div class="linkrow" id="pairIdle"><button class="linkbtn" id="pairBtn" type="button">Show a pairing code</button></div>
+            <div class="linkrow" id="pairOn" hidden>
+              <span class="paircode" id="pairCode" aria-live="polite">—</span>
+              <button class="linkbtn" id="pairStop" type="button">Stop sharing</button>
+            </div>
+            <small id="pairNote" aria-live="polite"></small>
+          </div>
+          <div class="setting">
+            <span>Follow a live director</span>
+            <small>Enter the show code from the director to follow their camera cuts.</small>
+            <form class="linkrow" id="showForm" autocomplete="off">
+              <input id="showCode" class="codein" maxlength="7" placeholder="ABC-123" aria-label="Show code" spellcheck="false" autocapitalize="characters">
+              <button class="linkbtn" id="showJoin" type="submit">Follow</button>
+              <button class="linkbtn" id="showLeave" type="button" hidden>Stop following</button>
+            </form>
+            <small id="showNote" aria-live="polite"></small>
+          </div>
+        </section>
         <div class="adslot" data-ad="foot"></div>
         <footer class="folio">— 4 —</footer>
       </article>
@@ -545,7 +576,9 @@ const CUES = [
   { t: 140, cam: 'stage',   look: { yaw: Math.PI, pitch: 0.02 }, call: 'Bows. Look out at the audience.' },
 ];
 const cueAt = t => { let c = CUES[0]; for (const q of CUES) if (q.t <= t) c = q; return c; };
-const nextCue = t => CUES.find(q => q.t > t);
+const nextCue = t => S.liveCue ? null : CUES.find(q => q.t > t);
+// A live director (remote console) overrides the scripted cue track while their show is live.
+const guideCue = t => S.liveCue || cueAt(t);
 
 // Lighting cues (what the stage manager calls on headset in the BTS feeds)
 const LX = [
@@ -602,6 +635,7 @@ const S = {
   reduceMotion: prefersReduced, captions: true, ad: false, hands: false,
   mix: 'binaural', vocalDb: 0, crowd: 0.6,
   switching: false, lastInput: performance.now(),
+  liveCue: null, remoteBadge: '',
 };
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const clamp01 = v => clamp(v, 0, 1);
@@ -1063,7 +1097,7 @@ function cutTo(id, { yaw, pitch } = {}) {
   setTimeout(() => { apply(); $('fade').classList.remove('on'); S.switching = false; }, 190);
 }
 function applyGuided(t, instant) {
-  const cue = cueAt(t);
+  const cue = guideCue(t);
   const a = lookAngles(cue.look, cue.cam, t);
   if (cue.cam !== S.cam) { cutTo(cue.cam, a); return; }
   if (instant || S.reduceMotion) {
@@ -1206,7 +1240,7 @@ function renderMap() {
 }
 function renderChartState() {
   if (!chartTag) return;
-  const gcam = S.guided ? cueAt(showTime()).cam : null;
+  const gcam = S.guided ? guideCue(showTime()).cam : null;
   document.querySelectorAll('.chart .camdot').forEach(n => {
     const id = n.dataset.cam;
     n.classList.toggle('on', id === S.cam); n.classList.toggle('pick', id === gcam);
@@ -1224,7 +1258,7 @@ function renderChartState() {
 }
 function renderPovCard() {
   const id = preview || S.cam, c = camById[id], isPreview = id !== S.cam;
-  const gcam = cueAt(showTime()).cam;
+  const gcam = guideCue(showTime()).cam;
   const chips = [
     isPreview ? '<span class="chip">Preview · tap to sit here</span>' : '<span class="chip">Now watching</span>',
     S.guided && id === gcam ? '<span class="chip pick">Director’s pick</span>' : '',
@@ -1355,7 +1389,7 @@ function updateOverlays(t) {
     const nb = document.querySelector('.chapters button.now'); nb && nb.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     lastSec = sec.id; renderCamUI();
   }
-  if (S.guided && cueAt(t).cam !== lastPick) { lastPick = cueAt(t).cam; renderChartState(); renderPovCard();
+  if (S.guided && guideCue(t).cam !== lastPick) { lastPick = guideCue(t).cam; renderChartState(); renderPovCard();
   }
   $('tcNow').textContent = fmt(t);
   if (!scrubbing) $('scrub').value = t;
@@ -1477,7 +1511,7 @@ function drawMenu(t) {
   for (let i = 0; i < 5; i++) { const z = 17 + i * 1.05; g.beginPath(); g.moveTo(X(-12), Y(z)); g.lineTo(X(-1), Y(z)); g.moveTo(X(1), Y(z)); g.lineTo(X(12), Y(z)); g.stroke(); }
   g.fillStyle = '#7a6a62'; g.font = `500 13px ${MONO}`; g.fillText('BALCONY · UPPER LEVEL', X(0), Y(22.4));
   for (const p of PERFORMERS) { const [px, pz] = performerXZ(p.id, t); g.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); g.beginPath(); g.arc(X(px), Y(pz), 7, 0, 7); g.fill(); }
-  const gcam = S.guided ? cueAt(t).cam : null;
+  const gcam = S.guided ? guideCue(t).cam : null;
   for (const b of MENU_BTNS.filter(b => b.cam)) {
     const on = S.cam === b.cam.id, ink = b.cam.bts ? '#11786c' : '#9b1f37', h = hov.has(b.id);
     if (b.cam.id === gcam) { g.strokeStyle = '#a8561a'; g.lineWidth = 4; g.setLineDash([10, 7]); g.beginPath(); g.arc(b.cx, b.cy, b.r + 10, 0, 7); g.stroke(); g.setLineDash([]); }
@@ -1492,6 +1526,7 @@ function drawMenu(t) {
   // right page: controls
   g.fillStyle = '#a8561a'; g.font = `500 20px ${MONO}`; g.fillText(`${fmt(t)} / ${fmt(END)} · ${sectionAt(t).name.toUpperCase()}`, 640, 44, 520);
   g.fillStyle = '#1d1418'; g.font = `400 40px ${SERIF}`; g.fillText('Every Seat', 640, 92);
+  if (S.remoteBadge) { g.textAlign = 'right'; g.fillStyle = '#9b1f37'; g.font = `700 18px ${MONO}`; g.fillText(S.remoteBadge, 1166, 88, 300); g.textAlign = 'left'; }
   g.fillStyle = '#6a5a5f'; g.font = `500 17px ${MONO}`;
   g.fillText(xrUI.pads ? 'STICK ←→ TURN · ↑↓ SEAT · A PLAY · B HIDE' : 'POINT AT A SEAT OR BUTTON AND PINCH', 640, 118, 530);
   for (const b of MENU_BTNS.filter(b => !b.cam)) {
@@ -1706,6 +1741,7 @@ async function beginXR(session) {
   xrUI.since = performance.now(); xrUI.dirty = true; xrUI.capKey = null; xrUI.pads = false;
   caps.mesh.visible = true; setMenuOpen(true);
   if (IS_QUEST2) setQuality(1); Q.ema = 0; Q.grace = 3;
+  dispatchEvent(new Event('everyseat:xrstart'));
   session.addEventListener('end', () => {
     menu.mesh.visible = caps.mesh.visible = tab.mesh.visible = false; fadeMesh.material.opacity = 0;
     setQuality(0);
@@ -1761,7 +1797,7 @@ function frame(now) {
   if (S.playing && t >= END) pause();
   scheduler();
   if (S.guided && S.started) {
-    const cue = cueAt(t);
+    const cue = guideCue(t);
     if (cue.cam !== S.cam) applyGuided(t, false);
     else if (!S.switching && !xrOn()) {
       const a = lookAngles(cue.look, cue.cam, t);
@@ -1805,7 +1841,70 @@ resize(); setPlayIcon();
 renderer.setAnimationLoop(frame);   // setAnimationLoop (not rAF) so it also drives the headset's frame loop
 if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {}));
 window.__everySeat = { S, seek, play, pause, cutTo, setGuided, goPage, drawMenu: t => (drawMenu(t), menu.cv) };
+
+/* ---------- bridge for link.js: phone/Mac remote and the live director's cut ---------- */
+const CAP_SIZES = { small: '1rem', medium: '1.25rem', large: '1.75rem' };
+const setCheck = (id, v) => { const el = $(id); if (el.checked !== v) { el.checked = v; el.dispatchEvent(new Event('change')); } };
+const setRange = (id, v) => { const el = $(id); if (+el.value !== v) { el.value = v; el.dispatchEvent(new Event('input')); } };
+window.EverySeat = {
+  cams: CAMS.map(c => ({ id: c.id, name: c.name })),
+  end: END,
+  state() {
+    const size = Object.keys(CAP_SIZES).find(k => $('capSeg').querySelector(`[data-size="${CAP_SIZES[k]}"]`).getAttribute('aria-pressed') === 'true') || 'medium';
+    return {
+      cam: S.cam, guided: S.guided, playing: S.playing, t: Math.round(showTime() * 100) / 100,
+      started: !!S.started, xr: xrOn(), audio_locked: !ctx || ctx.state !== 'running',
+      menu_open: xrOn() ? !!xrUI.open : true, live: !!S.liveCue, section: sectionAt(showTime()).name,
+      settings: {
+        captions: S.captions, capsize: size, ad: S.ad, hands: S.hands, motion: !!S.reduceMotion,
+        large: $('optLarge').checked, mix: S.mix, vocal: S.vocalDb, crowd: Math.round(S.crowd * 100),
+      },
+    };
+  },
+  // Apply one validated command from a paired remote.
+  command(c) {
+    switch (c.type) {
+      case 'seat': if (camById[c.cam]) { startShow(); pickCam(c.cam); } break;
+      case 'play': startShow(); if (!S.playing) play(); break;
+      case 'pause': if (S.playing) pause(); break;
+      case 'toggle_play': startShow(); S.playing ? pause() : play(); break;
+      case 'seek': startShow(); seek(c.t); break;
+      case 'skip': startShow(); seek(showTime() + c.by); break;
+      case 'guided': setGuided(!!c.on); break;
+      case 'menu': if (xrOn()) setMenuOpen(!!c.open); break;
+      case 'setting': {
+        const v = c.value;
+        if (c.key === 'captions') setCheck('optCaptions', v);
+        else if (c.key === 'ad') setCheck('optAD', v);
+        else if (c.key === 'hands') setCheck('optHands', v);
+        else if (c.key === 'motion') setCheck('optMotion', v);
+        else if (c.key === 'large') setCheck('optLarge', v);
+        else if (c.key === 'capsize' && CAP_SIZES[v]) $('capSeg').querySelector(`[data-size="${CAP_SIZES[v]}"]`).click();
+        else if (c.key === 'mix') $(v === 'board' ? 'mixBoard' : 'mixBinaural').click();
+        else if (c.key === 'vocal') setRange('vocal', v);
+        else if (c.key === 'crowd') setRange('crowd', v);
+        break;
+      }
+    }
+    xrUI.dirty = true;
+  },
+  // Live director's cut: {cam, subject} or null to go back to the scripted cut.
+  setLiveCue(cue) {
+    if (cue && camById[cue.cam]) {
+      const c = camById[cue.cam];
+      const look = cue.subject && cue.subject !== 'wide' && PERFORMERS.some(p => p.id === cue.subject)
+        ? cue.subject : { yaw: c.yaw, pitch: c.pitch };
+      S.liveCue = { t: 0, cam: c.id, look, call: `Live: director takes ${c.name}.` };
+    } else S.liveCue = null;
+    if (S.guided && S.started) applyGuided(showTime(), true);
+    renderCamUI();
+  },
+  setBadge(text) { S.remoteBadge = text || ''; xrUI.dirty = true; },
+  isXR: () => xrOn(),
+};
+dispatchEvent(new Event('everyseat:ready'));
 </script>
+<script src="link.js" defer></script>
 <script src="/tyl-privacy.js" defer></script>
 <script src="/tyl-nav.js" defer></script>
 </body>
