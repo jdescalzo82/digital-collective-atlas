@@ -210,7 +210,7 @@ class EverySeatApi(unittest.TestCase):
         self.assertEqual(self.call("POST", url, raw=b"[1,2]", token=remote["token"])[0], 400)
         self.assertEqual(self.call("POST", url, raw=b"type=play", ctype="application/x-www-form-urlencoded",
                                    token=remote["token"])[0], 415)
-        self.assertEqual(self.call("POST", url, raw=b'{"type":"play","x":"' + b"a" * 5000 + b'"}',
+        self.assertEqual(self.call("POST", url, raw=b'{"type":"play","x":"' + b"a" * 70000 + b'"}',
                                    token=remote["token"])[0], 413)
         s, d, _ = self.call("GET", url, token=viewer["token"], query="&after=abc")
         self.assertEqual(s, 400)
@@ -262,6 +262,85 @@ class EverySeatApi(unittest.TestCase):
         s, d, _ = self.call("GET", f"/shows/{code}")
         self.assertEqual((d["live"], d["ended"]), (False, True))
         self.assertEqual(self.call("POST", f"/shows/{code}/cue", {"cam": "mid"}, token=tok)[0], 409)
+
+    def test_feeds_report(self):
+        _, show, _ = self.call("POST", "/shows", {"key": KEY, "title": "Feeds"})
+        code, tok = show["code"], show["token"]
+        viewer, _ = self.pair()
+        self.assertEqual(self.call("POST", f"/shows/{code}/feeds", {"feeds": {}}, token=viewer["token"])[0], 403)
+        self.assertEqual(self.call("POST", f"/shows/{code}/feeds", {"feeds": {}})[0], 401)
+        for bad in [{}, {"feeds": {"roof": {"device": "x", "status": "ok"}}},
+                    {"feeds": {"front": {"device": "", "status": "ok"}}},
+                    {"feeds": {"front": {"device": "x", "status": "great"}}},
+                    {"feeds": {"front": {"device": "x" * 61, "status": "ok"}}},
+                    {"feeds": {"front": {"device": "x", "status": "ok", "fps": -1}}}]:
+            s, d, _ = self.call("POST", f"/shows/{code}/feeds", bad, token=tok)
+            self.assertEqual(s, 422, (bad, d))
+        feeds = {"front": {"device": "Insta360 Titan", "status": "ok", "width": 7680, "height": 3840,
+                           "fps": 29.97, "recording": True, "three_sixty": True, "future": 1},
+                 "foh": {"device": "HDMI Capture 2", "status": "no_signal"}}
+        self.assertEqual(self.call("POST", f"/shows/{code}/feeds", {"feeds": feeds}, token=tok)[0], 204)
+        _, d, _ = self.call("GET", f"/shows/{code}")
+        self.assertEqual(d["feeds"]["front"]["device"], "Insta360 Titan")
+        self.assertEqual(d["feeds"]["front"]["fps"], 30.0)
+        self.assertNotIn("future", d["feeds"]["front"])
+        self.assertLessEqual(d["feeds_age"], 2)
+        self.assertEqual(self.call("POST", f"/shows/{code}/feeds", {"feeds": {}}, token=tok)[0], 204)
+        _, d, _ = self.call("GET", f"/shows/{code}")
+        self.assertEqual(d["feeds"], {})
+
+    def test_automation_track(self):
+        _, show, _ = self.call("POST", "/shows", {"key": KEY, "title": "Automation"})
+        code, tok = show["code"], show["token"]
+        s, d, _ = self.call("GET", f"/shows/{code}/automation")
+        self.assertEqual((s, d["cues"], d["version"]), (200, [], 0))
+        # only a director token may write
+        self.assertEqual(self.call("PUT", f"/shows/{code}/automation", {"cues": []})[0], 401)
+        viewer, _ = self.pair()
+        self.assertEqual(self.call("PUT", f"/shows/{code}/automation", {"cues": []}, token=viewer["token"])[0], 403)
+        # NB {"cues": {}} is indistinguishable from [] after PHP's decode, so it means "no cues".
+        for bad in [{}, {"cues": [[]]}, {"cues": [{"t": -1, "cam": "mid"}]},
+                    {"cues": [{"t": 999, "cam": "mid"}]}, {"cues": [{"t": 5, "cam": "roof"}]},
+                    {"cues": [{"t": 5, "cam": "mid", "subject": "audience"}]},
+                    {"cues": [{"t": 5, "cam": "mid"}] * 601}]:
+            s, d, _ = self.call("PUT", f"/shows/{code}/automation", bad, token=tok)
+            self.assertEqual(s, 422, (str(bad)[:60], d))
+        cues = [{"t": 60.123, "cam": "balcony", "subject": "guitar"}, {"t": 0, "cam": "mid"},
+                {"t": 30, "cam": "stage", "subject": "vocal", "extra": "x"}]
+        s, d, _ = self.call("PUT", f"/shows/{code}/automation", {"cues": cues}, token=tok)
+        self.assertEqual((s, d["version"], d["count"]), (200, 1, 3))
+        _, d, _ = self.call("GET", f"/shows/{code}/automation")
+        self.assertEqual([c["t"] for c in d["cues"]], [0, 30, 60.12])      # sorted, rounded
+        self.assertEqual(d["cues"][0], {"t": 0, "cam": "mid", "subject": "wide"})
+        self.assertNotIn("extra", d["cues"][1])
+        _, d, _ = self.call("GET", f"/shows/{code}")
+        self.assertEqual(d["automation_version"], 1)
+        s, d, _ = self.call("PUT", f"/shows/{code}/automation", {"cues": []}, token=tok)
+        self.assertEqual(d["version"], 2)
+
+    def test_channel_map(self):
+        _, show, _ = self.call("POST", "/shows", {"key": KEY, "title": "Channels"})
+        code, tok = show["code"], show["token"]
+        s, d, _ = self.call("GET", f"/shows/{code}/channels")
+        self.assertEqual((s, d["channels"], d["version"]), (200, {}, 0))
+        for bad in [{}, {"channels": {"roof": {"src": "x.mp4"}}},
+                    {"channels": {"front": {}}},
+                    {"channels": {"front": {"src": "/etc/passwd"}}},
+                    {"channels": {"front": {"src": "../secret.mp4"}}},
+                    {"channels": {"front": {"src": "media/a.mp4", "offset": 9999}}},
+                    {"channels": {"front": {"src": "media/a.mp4", "sync": "psychic"}}},
+                    {"channels": {"front": {"src": "ftp://x/a.mp4"}}}]:
+            s, d, _ = self.call("PUT", f"/shows/{code}/channels", bad, token=tok)
+            self.assertEqual(s, 422, (bad, d))
+        channels = {"front": {"src": "media/front.mp4", "offset": 1.2345, "sync": "audio"},
+                    "balcony": {"src": "https://cdn.example.com/balc.mp4", "offset": -0.5}}
+        s, d, _ = self.call("PUT", f"/shows/{code}/channels", {"channels": channels}, token=tok)
+        self.assertEqual((s, d["version"], d["count"]), (200, 1, 2))
+        _, d, _ = self.call("GET", f"/shows/{code}/channels")
+        self.assertEqual(d["channels"]["front"]["offset"], 1.235)  # PHP rounds half-up
+        self.assertEqual(d["channels"]["balcony"]["src"], "https://cdn.example.com/balc.mp4")
+        _, d, _ = self.call("GET", f"/shows/{code}")
+        self.assertEqual(d["channels_version"], 1)
 
     def test_show_lookup_errors(self):
         self.assertEqual(self.call("GET", "/shows/ZZZ-ZZZ")[0], 404)

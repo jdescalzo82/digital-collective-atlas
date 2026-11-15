@@ -142,7 +142,7 @@
   }
 
   /* ------------------------------------------------------- live director */
-  const live = { code: null, version: -1, running: false, viewer: null };
+  const live = { code: null, version: -1, autoVer: -1, chVer: -1, running: false, viewer: null };
 
   function viewerId() {
     let id = store.get('es_viewer');
@@ -162,7 +162,7 @@
       note('showNote', 'Show codes are 6 letters and numbers, like K7Q-4MZ.', true); return;
     }
     unfollow(true);
-    Object.assign(live, { code, version: -1, viewer: viewerId() });
+    Object.assign(live, { code, version: -1, autoVer: -1, chVer: -1, viewer: viewerId() });
     $('showCode').value = code.slice(0, 3) + '-' + code.slice(3);
     $('showJoin').hidden = true; $('showLeave').hidden = false;
     note('showNote', 'Connecting to the show…');
@@ -170,8 +170,9 @@
   }
 
   function unfollow(silent) {
-    live.running = false; live.code = null; live.version = -1;
+    live.running = false; live.code = null; live.version = -1; live.autoVer = -1; live.chVer = -1;
     ES.setLiveCue(null);
+    ES.setCueTrack(null);
     $('showJoin').hidden = false; $('showLeave').hidden = true;
     if (!silent) note('showNote', 'Back to the built-in director’s cut.');
   }
@@ -188,6 +189,30 @@
         if (d.version !== live.version) {
           live.version = d.version;
           ES.setLiveCue(d.live && d.cue ? d.cue : null);
+        }
+        // The operator's recorded automation feeds the guided view when no director is live.
+        if ((d.automation_version || 0) !== live.autoVer) {
+          live.autoVer = d.automation_version || 0;
+          if (live.autoVer > 0) {
+            try {
+              const a = await api('GET', `/shows/${code}/automation`);
+              if (live.code === code) ES.setCueTrack(a.cues);
+            } catch (e) { live.autoVer = -1; /* retry next poll */ }
+          } else ES.setCueTrack(null);
+        }
+        // The hub's channel map points each seat at its synced video.
+        if ((d.channels_version || 0) !== live.chVer && (d.channels_version || 0) > 0) {
+          live.chVer = d.channels_version || 0;
+          try {
+            const c = await api('GET', `/shows/${code}/channels`);
+            if (live.code === code) {
+              const resolved = {};
+              for (const [id, ch] of Object.entries(c.channels || {})) {
+                resolved[id] = { ...ch, src: new URL(ch.src, new URL('./', location.href)).href };
+              }
+              ES.setChannels(resolved);
+            }
+          } catch (e) { live.chVer = -1; /* retry next poll */ }
         }
         note('showNote', d.live ? `Following “${d.title}” live.${ES.state().guided ? '' : ' Turn on the director’s cut to follow their cuts.'}`
                                 : `“${d.title}”: waiting for the director to go live.`);

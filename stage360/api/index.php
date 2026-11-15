@@ -20,6 +20,11 @@
  *   POST   ?r=/shows/{code}/director {key}       director takes over an existing show
  *   POST   ?r=/shows/{code}/cue    {cam,subject?} director takes a shot (goes live)
  *   POST   ?r=/shows/{code}/live   {live}        director goes live / pauses the live cut
+ *   POST   ?r=/shows/{code}/feeds  {feeds}       hub/operator reports feed health per camera
+ *   PUT    ?r=/shows/{code}/automation {cues}    operator records the cue track (director token)
+ *   GET    ?r=/shows/{code}/automation           viewers fetch the recorded cue track
+ *   PUT    ?r=/shows/{code}/channels {channels}  hub publishes video src + sync offset per camera
+ *   GET    ?r=/shows/{code}/channels             viewers fetch the channel map
  *   GET    ?r=/shows/{code}&after=V&viewer=ID    viewers poll the current cue
  *   DELETE ?r=/shows/{code}                      director ends the show
  */
@@ -42,7 +47,7 @@ $cors = ['Vary' => 'Origin'];
 if ($origin !== '' && in_array(rtrim($origin, '/'), $cfg['allowed_origins'], true)) {
     $cors += [
         'Access-Control-Allow-Origin' => $origin,
-        'Access-Control-Allow-Methods' => 'GET, POST, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers' => 'Content-Type, X-ES-Token, Authorization',
         'Access-Control-Max-Age' => '600',
     ];
@@ -231,6 +236,13 @@ try {
 
         if ($sub === '' && $method === 'GET') {
             es_rate($db, $cfg, 'read');
+            $f = $db->prepare('SELECT body, updated FROM show_feeds WHERE show = ?');
+            $f->execute([$code]);
+            $frow = $f->fetch();
+            $tv = [];
+            $q = $db->prepare('SELECT kind, version FROM show_tracks WHERE show = ?');
+            $q->execute([$code]);
+            foreach ($q->fetchAll() as $r) $tv[$r['kind']] = (int) $r['version'];
             $viewer = $_GET['viewer'] ?? '';
             if ($viewer !== '') {
                 if (!is_string($viewer) || !preg_match('/^[A-Za-z0-9_-]{8,40}$/', $viewer)) es_fail(400, 'invalid_viewer', 'Bad viewer id.', 'viewer');
@@ -245,6 +257,11 @@ try {
                 'version' => (int) $row['version'],
                 'cue' => $row['cue'] ? json_decode($row['cue'], true) : null,
                 'viewers' => (int) $n->fetchColumn(),
+                // decoded as objects (not assoc) so an empty map re-encodes as {}
+                'feeds' => $frow ? json_decode($frow['body']) : null,
+                'feeds_age' => $frow ? es_now() - (int) $frow['updated'] : null,
+                'automation_version' => $tv['automation'] ?? 0,
+                'channels_version' => $tv['channels'] ?? 0,
             ]);
         }
         if ($sub === '' && $method === 'DELETE') {
@@ -272,6 +289,49 @@ try {
                ->execute([json_encode($cue), es_now(), $code]);
             es_send(200, ['version' => (int) $row['version'] + 1, 'cue' => $cue, 'live' => true]);
         }
+        if ($sub === 'feeds' && $method === 'POST') {
+            es_rate($db, $cfg, 'write');
+            es_auth($db, $code, ['director']);
+            $feeds = es_validate_feeds(es_body()['feeds'] ?? null, $camIds);
+            $db->prepare('INSERT INTO show_feeds (show, body, updated) VALUES (?, ?, ?)
+                          ON CONFLICT(show) DO UPDATE SET body = excluded.body, updated = excluded.updated')
+               ->execute([$code, json_encode($feeds, JSON_FORCE_OBJECT), es_now()]);
+            es_send(204);
+        }
+        if ($sub === 'automation') {
+            if ($method === 'GET') {
+                es_rate($db, $cfg, 'read');
+                $trow = es_track_get($db, $code, 'automation');
+                es_send(200, ['cues' => $trow ? json_decode($trow['body'], true) : [],
+                              'version' => $trow ? (int) $trow['version'] : 0]);
+            }
+            if ($method === 'PUT' || $method === 'POST') {
+                es_rate($db, $cfg, 'write');
+                es_auth($db, $code, ['director']);
+                $cues = es_validate_automation(es_body()['cues'] ?? null, $camIds, $subjectIds, (float) $show['end']);
+                $v = es_track_put($db, $code, 'automation', json_encode($cues));
+                $db->prepare('UPDATE shows SET updated = ? WHERE code = ?')->execute([es_now(), $code]);
+                es_send(200, ['version' => $v, 'count' => count($cues)]);
+            }
+            es_fail(405, 'method_not_allowed', 'Use GET or PUT.', null, ['Allow' => 'GET, PUT']);
+        }
+        if ($sub === 'channels') {
+            if ($method === 'GET') {
+                es_rate($db, $cfg, 'read');
+                $trow = es_track_get($db, $code, 'channels');
+                es_send(200, ['channels' => $trow ? json_decode($trow['body']) : new stdClass(),
+                              'version' => $trow ? (int) $trow['version'] : 0]);
+            }
+            if ($method === 'PUT' || $method === 'POST') {
+                es_rate($db, $cfg, 'write');
+                es_auth($db, $code, ['director']);
+                $channels = es_validate_channels(es_body()['channels'] ?? null, $camIds);
+                $v = es_track_put($db, $code, 'channels', json_encode($channels, JSON_FORCE_OBJECT));
+                $db->prepare('UPDATE shows SET updated = ? WHERE code = ?')->execute([es_now(), $code]);
+                es_send(200, ['version' => $v, 'count' => count($channels)]);
+            }
+            es_fail(405, 'method_not_allowed', 'Use GET or PUT.', null, ['Allow' => 'GET, PUT']);
+        }
         if ($sub === 'live' && $method === 'POST') {
             es_rate($db, $cfg, 'write');
             es_auth($db, $code, ['director']);
@@ -280,7 +340,7 @@ try {
                ->execute([$live ? 1 : 0, es_now(), $code]);
             es_send(200, ['version' => (int) $row['version'] + 1, 'live' => $live]);
         }
-        if (in_array($sub, ['', 'director', 'cue', 'live'], true)) es_fail(405, 'method_not_allowed', 'Method not allowed.');
+        if (in_array($sub, ['', 'director', 'cue', 'live', 'feeds', 'automation', 'channels'], true)) es_fail(405, 'method_not_allowed', 'Method not allowed.');
         es_fail(404, 'not_found', 'No such endpoint.');
     }
 

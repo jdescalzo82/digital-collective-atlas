@@ -576,9 +576,17 @@ const CUES = [
   { t: 140, cam: 'stage',   look: { yaw: Math.PI, pitch: 0.02 }, call: 'Bows. Look out at the audience.' },
 ];
 const cueAt = t => { let c = CUES[0]; for (const q of CUES) if (q.t <= t) c = q; return c; };
-const nextCue = t => S.liveCue ? null : CUES.find(q => q.t > t);
-// A live director (remote console) overrides the scripted cue track while their show is live.
-const guideCue = t => S.liveCue || cueAt(t);
+// Cue priority for the guided view: the viewer picking a seat beats everything
+// (guided switches off); then a live director; then the operator's recorded
+// automation for the show being followed; then the built-in scripted cut.
+const trackCue = t => {
+  if (!S.cueTrack || !S.cueTrack.length) return null;
+  let c = S.cueTrack[0];
+  for (const q of S.cueTrack) { if (q.t <= t) c = q; else break; }
+  return c;
+};
+const nextCue = t => S.liveCue ? null : (S.cueTrack && S.cueTrack.length ? S.cueTrack : CUES).find(q => q.t > t);
+const guideCue = t => S.liveCue || trackCue(t) || cueAt(t);
 
 // Lighting cues (what the stage manager calls on headset in the BTS feeds)
 const LX = [
@@ -635,7 +643,7 @@ const S = {
   reduceMotion: prefersReduced, captions: true, ad: false, hands: false,
   mix: 'binaural', vocalDb: 0, crowd: 0.6,
   switching: false, lastInput: performance.now(),
-  liveCue: null, remoteBadge: '',
+  liveCue: null, cueTrack: null, remoteBadge: '',
 };
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const clamp01 = v => clamp(v, 0, 1);
@@ -825,27 +833,40 @@ const sphereGeo = new THREE.SphereGeometry(20, 96, 48); sphereGeo.scale(-1, 1, 1
 const sphere = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }));
 sphere.rotation.y = -Math.PI / 2;  // centre of the frame faces the stage (yaw 0)
 sphere.visible = false; scene.add(sphere);
-const videos = {}; // camId -> { el, tex }
+const videos = {}; // camId -> { el, tex, off }  (off: seconds added to the show clock)
+function attachVideo(id, el, off) {
+  const old = videos[id];
+  if (old) { old.el.pause(); if (old.el.src.startsWith('blob:')) URL.revokeObjectURL(old.el.src); old.tex.dispose(); }
+  el.playsInline = true; el.preload = 'auto'; el.crossOrigin = 'anonymous'; el.muted = false;
+  const tex = new THREE.VideoTexture(el); tex.colorSpace = THREE.SRGBColorSpace;
+  videos[id] = { el, tex, off: off || 0 };
+  el.addEventListener('loadedmetadata', () => { syncVideos(true); renderPovs(); });
+  el.addEventListener('error', () => { if (videos[id] && videos[id].el === el) { delete videos[id]; renderPovs(); } });
+}
+// The hub's channel map points each camera at a video with a sync offset.
+function loadVideoURL(id, src, off) {
+  const el = document.createElement('video');
+  el.src = src; el.loop = false;
+  attachVideo(id, el, off);
+}
 $('file').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;
-  const old = videos[S.cam]; if (old) { old.el.pause(); URL.revokeObjectURL(old.el.src); old.tex.dispose(); }
   const el = document.createElement('video');
-  el.src = URL.createObjectURL(f); el.playsInline = true; el.preload = 'auto'; el.crossOrigin = 'anonymous';
-  const tex = new THREE.VideoTexture(el); tex.colorSpace = THREE.SRGBColorSpace;
-  videos[S.cam] = { el, tex };
-  el.addEventListener('loadedmetadata', () => { syncVideos(true); renderPovs(); });
+  el.src = URL.createObjectURL(f);
+  attachVideo(S.cam, el, 0);
   e.target.value = '';
 });
 function syncVideos(force) {
   const t = showTime();
   for (const [id, v] of Object.entries(videos)) {
-    const active = id === S.cam && S.playing && t < (v.el.duration || 0);
+    const vt = t + v.off;  // the hub's sync offset lines this file up with the show clock
+    const active = id === S.cam && S.playing && vt >= 0 && vt < (v.el.duration || 0);
     if (active) {
-      if (force || Math.abs(v.el.currentTime - t) > 0.35) v.el.currentTime = t;
+      if (force || Math.abs(v.el.currentTime - vt) > 0.35) v.el.currentTime = vt;
       if (v.el.paused) v.el.play().catch(() => {});
     } else {
       if (!v.el.paused) v.el.pause();
-      if (force && v.el.duration) v.el.currentTime = Math.min(t, v.el.duration - 0.05);
+      if (force && v.el.duration) v.el.currentTime = clamp(vt, 0, v.el.duration - 0.05);
     }
   }
   updateMixLevels();
@@ -1840,7 +1861,7 @@ $('tcEnd').textContent = fmt(END); $('scrub').max = END;
 resize(); setPlayIcon();
 renderer.setAnimationLoop(frame);   // setAnimationLoop (not rAF) so it also drives the headset's frame loop
 if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {}));
-window.__everySeat = { S, seek, play, pause, cutTo, setGuided, goPage, drawMenu: t => (drawMenu(t), menu.cv) };
+window.__everySeat = { S, seek, play, pause, cutTo, setGuided, goPage, videos, drawMenu: t => (drawMenu(t), menu.cv) };
 
 /* ---------- bridge for link.js: phone/Mac remote and the live director's cut ---------- */
 const CAP_SIZES = { small: '1rem', medium: '1.25rem', large: '1.75rem' };
@@ -1887,6 +1908,27 @@ window.EverySeat = {
       }
     }
     xrUI.dirty = true;
+  },
+  // The operator's recorded automation: [{t, cam, subject}] or null for the built-in script.
+  setCueTrack(cues) {
+    if (!cues || !cues.length) { S.cueTrack = null; }
+    else {
+      S.cueTrack = cues.filter(c => camById[c.cam]).map(c => {
+        const cam = camById[c.cam];
+        const look = c.subject && c.subject !== 'wide' && PERFORMERS.some(p => p.id === c.subject)
+          ? c.subject : { yaw: cam.yaw, pitch: cam.pitch };
+        return { t: Math.max(0, +c.t || 0), cam: c.cam, look, call: `Take ${cam.name}.` };
+      }).sort((a, b) => a.t - b.t);
+      if (!S.cueTrack.length) S.cueTrack = null;
+    }
+    if (S.guided && S.started) applyGuided(showTime(), true);
+    renderCamUI();
+  },
+  // The hub's channel map: {camId: {src, offset}} with src already resolved to a URL.
+  setChannels(channels) {
+    for (const [id, ch] of Object.entries(channels || {})) {
+      if (camById[id] && ch && typeof ch.src === 'string') loadVideoURL(id, ch.src, +ch.offset || 0);
+    }
   },
   // Live director's cut: {cam, subject} or null to go back to the scripted cut.
   setLiveCue(cue) {

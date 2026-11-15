@@ -87,38 +87,83 @@ The player is Quest-first:
 - **Comfort**: no artificial smooth motion, cuts fade through black, and the caption strip suggests a break after 20 minutes.
 - **PWA**: `manifest.webmanifest`, icons and `sw.js` (network-first page, cached three.js) make it installable. Package for the Horizon Store with Meta's Bubblewrap fork: `bubblewrap init --manifest=https://toolkityourlife.com/EverySeat/manifest.webmanifest --metaquest`, then upload the signed APK with `ovr-platform-util`. Deep links: `?seat=balcony`, `?hands=1`, `?guided=0`.
 
-## Backend: pairing, remotes and a live director (`api/`)
+## The three apps
 
-The player is still a static page, but `api/` adds a small PHP + SQLite backend
-(any cPanel plan can run it; no Composer, no rewrite rules) for everything that
-needs two devices to agree:
+Every Seat is now three cooperating pieces, all speaking to the small PHP +
+SQLite API in `api/` (any cPanel plan runs it; no Composer, no rewrite rules):
 
-- **Phone/Mac remote.** The viewer opens the program's **Access** page and taps
-  **Show a pairing code** (in a headset the code is printed on the program and
-  pairing starts automatically). On a phone, Mac or any browser,
-  `remote/` takes that code and can then pick seats from the same seating
-  chart, play/pause, seek, toggle the director's cut, and set captions, audio
-  description, hands-free, motion, size, mix, vocal clarity and crowd level.
-  Built for a carer setting up the show for someone in a headset.
-- **Live director mode.** The `remote/` page's **Director** tab (key required,
-  set in `api/config.local.php`) starts a live show with its own code. Viewers
-  who enter it follow the director's camera cuts in their guided view instead
-  of the built-in script; `?show=CODE` links open straight into it.
-- **How it talks.** Plain polling (~1/s, backing off when hidden or failing):
-  LL-HLS-style push isn't possible on shared hosting, and at these payload
-  sizes polling is fine. Commands are validated server-side against the camera
-  list and setting ranges; codes are 6 characters from an unambiguous alphabet;
-  tokens are stored hashed; rooms, shows and commands all expire on their own.
-- **Deploying to cPanel.** Upload `index.html`, `link.js`, `sw.js`, `.htaccess`,
-  `remote/` and `api/` (keep `api/.htaccess` and `api/data/.htaccess`; they stop
-  the web server serving the config and database). Then copy
-  `api/config.local.sample.php` to `api/config.local.php` and set a long random
-  director key. Nothing else to install: the SQLite database creates itself.
-  If the API is absent (plain static hosting), the player hides all of this and
-  works exactly as before.
-- **Tests.** `python3 -m unittest tests.test_everyseat_api` (repo root) runs the
-  API end to end under PHP's built-in server, and checks the camera list in
-  `api/config.php` still matches the player's.
+**1 · The viewer** — the player (`index.html`) plus the patron's remote
+(`remote/`, Remote tab). A carer or friend pairs a phone/Mac with a 6-character
+code from the program's Access page and can pick seats, run the transport and
+change every access and sound setting for whoever is watching.
+
+**2 · The feed hub** (`hub/everyseat_hub.py`) — the central piece that turns a
+pile of camera recordings into a synced show. It assigns files to seat
+channels (by filename, overridable), lines them up **several ways — by audio
+waveform** (FFT cross-correlation of each file's loudness envelope against the
+reference channel; the room sound is the shared clock), **by recorded start
+time**, **by embedded timecode**, or **manually** — then publishes the channel
+map (`src` + `offset` per seat) and feed health to the server. Every player
+following the show loads each seat's video at the right moment:
+`video.currentTime = showTime + offset`. Weak waveform matches are flagged so
+you check them by eye. Needs only Python 3.9+ (ffmpeg recommended; without it,
+.wav only).
+
+**3 · The operator / editor** (`remote/`, Operator tab) — plays the show
+clock, and with **REC** armed every camera take (tap or keys 1–6) is stamped
+into an **automation track** `{t, cam, subject}`. The track autosaves to the
+server (debounced, versioned) and can be edited cue by cue: jump, re-time to
+"now", delete, reload, clear. The server feeds the automation out to every
+viewer, whose guided view follows it instead of the built-in script.
+
+**Who wins** when they disagree — the override chain, most personal first:
+
+1. **The patron.** Picking any seat switches the guided view off; *Return to
+   guided view* hands control back. This always wins.
+2. **A live director** (Director tab) taking shots in real time.
+3. **The recorded automation** from the operator.
+4. The built-in scripted cut that ships with the prototype.
+
+The Director tab also shows the hub's **feed health** under each camera
+(FEED OK · 2160p · 360° · device, NO SIGNAL, FROZEN, link lost), so the person
+calling shots can see a dead channel before they cut to it.
+
+### API surface
+
+Pairing: `POST /rooms`, `POST /rooms/join`, `GET|POST /rooms/{id}/commands`,
+`GET|POST /rooms/{id}/status`, `DELETE /rooms/{id}`. Shows:
+`POST /shows`, `POST /shows/{code}/director`, `POST .../cue`, `POST .../live`,
+`POST .../feeds`, `PUT|GET .../automation`, `PUT|GET .../channels`,
+`GET /shows/{code}` (includes cue, feeds, `automation_version`,
+`channels_version` so clients refetch only on change), `DELETE /shows/{code}`.
+
+Hardening: everything a client sends is validated against the camera list,
+subject list and setting ranges; codes use an unambiguous alphabet; tokens are
+stored hashed with per-role checks; per-IP rate limits (10 code guesses/min);
+JSON-only bodies capped at 64 KB; rooms, shows, commands and tracks expire or
+cascade away on their own; channel `src` paths cannot escape the site; config
+and database are blocked by `.htaccess`. Clients back off when polling fails,
+resume after reload, and the player degrades to the standalone prototype when
+the API is absent.
+
+### Deploying to cPanel
+
+Upload `index.html`, `link.js`, `sw.js`, `.htaccess`, `remote/` and `api/`
+(keep both `.htaccess` files). Copy `api/config.local.sample.php` to
+`api/config.local.php`, set a long random director key, done — the database
+creates itself. Media goes wherever you like (e.g. `media/night1/`); the hub's
+`publish --media-base media/night1/` writes matching `src` paths.
+
+### Tests
+
+`python3 -m unittest discover tests` (repo root) covers the API end to end
+under PHP's built-in server (17 tests) and the hub (8 tests, including
+recovering known waveform offsets of +1.5 s / −1.2 s, surviving AAC
+compression, flagging unrelated audio, and publishing to a live API). A
+Playwright run drives player + patron remote + director + operator together:
+pairing, every control, live takes, feed badges, recording and editing the
+automation, the full override chain, and a channel video loading with its
+sync offset.
 
 ## Native apps (`apple/`)
 

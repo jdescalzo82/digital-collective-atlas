@@ -2,7 +2,7 @@
 /* Every Seat API — shared helpers: responses, input, database, auth, rate limits. */
 
 const ES_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L
-const ES_MAX_BODY = 4096;
+const ES_MAX_BODY = 65536;   // roomy enough for a 600-cue automation track
 
 final class EsError extends Exception {
     public int $status; public string $errCode; public ?string $field; public array $headers;
@@ -147,6 +147,14 @@ CREATE TABLE IF NOT EXISTS shows (
   code TEXT PRIMARY KEY, title TEXT NOT NULL, live INTEGER NOT NULL DEFAULT 0, ended INTEGER NOT NULL DEFAULT 0,
   version INTEGER NOT NULL DEFAULT 0, cue TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS show_tracks (
+  show TEXT NOT NULL, kind TEXT NOT NULL, body TEXT NOT NULL,
+  version INTEGER NOT NULL, updated INTEGER NOT NULL,
+  PRIMARY KEY (show, kind)
+);
+CREATE TABLE IF NOT EXISTS show_feeds (
+  show TEXT PRIMARY KEY, body TEXT NOT NULL, updated INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS show_viewers (
   show TEXT NOT NULL, viewer TEXT NOT NULL, seen INTEGER NOT NULL, PRIMARY KEY (show, viewer)
 );
@@ -169,6 +177,8 @@ function es_housekeeping(PDO $db, array $cfg): void {
     $db->prepare('DELETE FROM shows WHERE updated < ?')->execute([$now - $cfg['show_idle_ttl']]);
     $db->exec("DELETE FROM tokens WHERE role = 'director' AND scope NOT IN (SELECT code FROM shows)");
     $db->prepare('DELETE FROM show_viewers WHERE seen < ?')->execute([$now - 300]);
+    $db->exec('DELETE FROM show_feeds WHERE show NOT IN (SELECT code FROM shows)');
+    $db->exec('DELETE FROM show_tracks WHERE show NOT IN (SELECT code FROM shows)');
     $db->prepare('DELETE FROM ratelimit WHERE win < ?')->execute([intdiv($now, 60) - 1]);
 }
 
@@ -286,4 +296,105 @@ function es_check_director_key(array $cfg, $key): void {
     if (!is_string($key) || !hash_equals($cfg['director_key'], $key)) {
         es_fail(403, 'wrong_key', 'That director key is not right.', 'key');
     }
+}
+
+/** Feed reports from the production app: {camId: {device, status, ...}}. */
+function es_validate_feeds($f, array $camIds): array {
+    // JSON {} and [] both decode to the empty PHP array, so [] means "no feeds".
+    if (!is_array($f) || ($f !== [] && array_is_list($f))) {
+        es_fail(422, 'invalid_feeds', 'feeds must be an object keyed by camera id.', 'feeds');
+    }
+    $out = [];
+    foreach ($f as $cam => $info) {
+        if (!in_array($cam, $camIds, true)) {
+            es_fail(422, 'invalid_feeds', "Unknown camera '$cam'.", 'feeds');
+        }
+        if (!is_array($info) || array_is_list($info)) {
+            es_fail(422, 'invalid_feeds', 'Each feed must be an object.', 'feeds');
+        }
+        $device = $info['device'] ?? null;
+        if (!is_string($device) || trim($device) === '' || mb_strlen($device) > 60
+            || preg_match('/[\p{Cc}\p{Cf}]/u', $device)) {
+            es_fail(422, 'invalid_feeds', 'Each feed needs a device name of 1-60 characters.', 'feeds');
+        }
+        $entry = [
+            'device' => trim($device),
+            'status' => es_enum($info['status'] ?? null, 'status',
+                                ['ok', 'no_signal', 'black', 'frozen', 'starting']),
+        ];
+        if (isset($info['width']))  $entry['width']  = es_int($info['width'], 'width', 0, 16384);
+        if (isset($info['height'])) $entry['height'] = es_int($info['height'], 'height', 0, 16384);
+        if (isset($info['fps']))    $entry['fps']    = round(es_num($info['fps'], 'fps', 0, 480), 1);
+        foreach (['recording', 'three_sixty'] as $k) {
+            if (array_key_exists($k, $info)) $entry[$k] = es_bool($info[$k], $k);
+        }
+        // Unknown extra fields from newer production apps are dropped, not rejected.
+        $out[$cam] = $entry;
+    }
+    return $out;
+}
+
+/** The operator's recorded cue track: a list of {t, cam, subject}, kept sorted. */
+function es_validate_automation($cues, array $camIds, array $subjectIds, float $end): array {
+    if (!is_array($cues) || ($cues !== [] && !array_is_list($cues))) {
+        es_fail(422, 'invalid_cues', 'cues must be a list of {t, cam, subject}.', 'cues');
+    }
+    if (count($cues) > 600) es_fail(422, 'invalid_cues', 'At most 600 cues per show.', 'cues');
+    $out = [];
+    foreach ($cues as $c) {
+        if (!is_array($c) || array_is_list($c)) es_fail(422, 'invalid_cues', 'Each cue must be an object.', 'cues');
+        $out[] = [
+            't' => round(es_num($c['t'] ?? null, 't', 0, $end), 2),
+            'cam' => es_enum($c['cam'] ?? null, 'cam', $camIds),
+            'subject' => es_enum($c['subject'] ?? 'wide', 'subject', $subjectIds),
+        ];
+    }
+    usort($out, fn($a, $b) => $a['t'] <=> $b['t']);
+    return $out;
+}
+
+/** The hub's channel map: {camId: {src, offset, sync?}}. */
+function es_validate_channels($ch, array $camIds): array {
+    if (!is_array($ch) || ($ch !== [] && array_is_list($ch))) {
+        es_fail(422, 'invalid_channels', 'channels must be an object keyed by camera id.', 'channels');
+    }
+    $out = [];
+    foreach ($ch as $cam => $info) {
+        if (!in_array($cam, $camIds, true)) es_fail(422, 'invalid_channels', "Unknown camera '$cam'.", 'channels');
+        if (!is_array($info) || array_is_list($info)) es_fail(422, 'invalid_channels', 'Each channel must be an object.', 'channels');
+        $src = $info['src'] ?? null;
+        if (!is_string($src) || $src === '' || strlen($src) > 300 || preg_match('/[\s\x00-\x1f]/', $src)) {
+            es_fail(422, 'invalid_channels', 'Each channel needs a src: a URL or a site-relative path (1-300 characters).', 'channels');
+        }
+        $lower = strtolower($src);
+        if (str_starts_with($lower, 'https://') || str_starts_with($lower, 'http://')) {
+            if (!filter_var($src, FILTER_VALIDATE_URL)) es_fail(422, 'invalid_channels', 'Bad channel URL.', 'channels');
+        } elseif (str_starts_with($src, '/') || str_contains($src, '..') || str_contains($src, ':')) {
+            es_fail(422, 'invalid_channels', 'Relative paths must stay inside the site (no .., : or leading /).', 'channels');
+        }
+        $entry = ['src' => $src, 'offset' => round(es_num($info['offset'] ?? 0, 'offset', -3600, 3600), 3)];
+        if (isset($info['sync'])) {
+            $entry['sync'] = es_enum($info['sync'], 'sync', ['audio', 'timecode', 'start_time', 'manual']);
+        }
+        $out[$cam] = $entry;
+    }
+    return $out;
+}
+
+/** Store a show's automation or channels track; returns the new version. */
+function es_track_put(PDO $db, string $code, string $kind, string $json): int {
+    $db->prepare('INSERT INTO show_tracks (show, kind, body, version, updated) VALUES (?, ?, ?, 1, ?)
+                  ON CONFLICT(show, kind) DO UPDATE SET body = excluded.body,
+                  version = show_tracks.version + 1, updated = excluded.updated')
+       ->execute([$code, $kind, $json, es_now()]);
+    $st = $db->prepare('SELECT version FROM show_tracks WHERE show = ? AND kind = ?');
+    $st->execute([$code, $kind]);
+    return (int) $st->fetchColumn();
+}
+
+function es_track_get(PDO $db, string $code, string $kind): ?array {
+    $st = $db->prepare('SELECT body, version, updated FROM show_tracks WHERE show = ? AND kind = ?');
+    $st->execute([$code, $kind]);
+    $row = $st->fetch();
+    return $row ?: null;
 }

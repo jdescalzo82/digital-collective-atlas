@@ -128,7 +128,22 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
 .take b { font: 400 20px/1.15 var(--f-serif); } .take span { font-size: 12px; color: var(--muted); }
 .take[aria-pressed="true"] { border-color: var(--err); box-shadow: inset 0 0 0 2px var(--err); }
 .take[aria-pressed="true"] .k::after { content: ' · ON AIR'; color: var(--err); }
+.take .feed { font: 700 10px/1.4 var(--f-mono); letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.take .feed.ok { color: var(--ok); } .take .feed.bad { color: var(--err); } .take .feed.warn { color: var(--warn); }
 .subjects button { border-radius: 999px; }
+.rec { border: 1.5px solid var(--err); color: var(--err); border-radius: 999px; padding: 10px 16px; min-height: 44px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
+.rec::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--err); }
+.rec[aria-pressed="true"] { background: var(--err); color: #fff; }
+.rec[aria-pressed="true"]::before { background: #fff; animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .rec[aria-pressed="true"]::before { animation: none; } }
+.cuelist { display: grid; gap: 4px; max-height: 320px; overflow: auto; }
+.cue { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--paper); }
+.cue.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cue .t { font: 700 13px var(--f-mono); color: var(--accent); min-width: 3.2em; cursor: pointer; }
+.cue .what { flex: 1; font-size: 14px; } .cue .what small { color: var(--muted); }
+.cue button { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 4px 8px; font-size: 12px; min-height: 32px; }
+.savestate { font: 600 12px var(--f-mono); color: var(--muted); } .savestate.err { color: var(--err); }
 
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: calc(100% - 32px); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
 .toast.on { opacity: 1; }
@@ -143,6 +158,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
     <div class="tabs" role="tablist" aria-label="Mode">
       <button role="tab" id="tabRemote" aria-selected="true" aria-controls="remote">Remote</button>
       <button role="tab" id="tabDirector" aria-selected="false" aria-controls="director">Director</button>
+      <button role="tab" id="tabOperator" aria-selected="false" aria-controls="operator">Operator</button>
     </div>
   </header>
 
@@ -264,6 +280,69 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
         </div>
       </div>
     </section>
+    <!-- ====================================================== OPERATOR -->
+    <section id="operator" role="tabpanel" aria-labelledby="tabOperator" hidden>
+      <div id="oConnect" class="card stack" style="max-width:560px;margin:0 auto">
+        <h2>Open a show to edit</h2>
+        <p class="muted small" style="margin:0">The operator records the camera cuts as an automation track. The server plays it to every viewer following the show — unless a live director takes over, or the patron picks their own seat.</p>
+        <form class="stack" id="oForm" autocomplete="off">
+          <label class="field">Show code<input class="codein" id="oCode" maxlength="7" placeholder="ABC-123" spellcheck="false" autocapitalize="characters"></label>
+          <label class="field">Director key<input class="textin" id="oKey" type="password" autocomplete="current-password" required></label>
+          <div class="row"><button class="btn primary" type="submit">Open show</button></div>
+          <p class="muted small" style="margin:0">No show yet? Start one on the <b>Director</b> tab; its code works here.</p>
+          <p class="err" id="oErr" role="alert"></p>
+        </form>
+      </div>
+
+      <div id="oLive" class="stack" hidden>
+        <div class="card row spread">
+          <div>
+            <div class="kicker" id="oTitle">Show</div>
+            <div class="showcode" id="oShowCode">—</div>
+          </div>
+          <div class="stack" style="justify-items:end">
+            <span class="savestate" id="oSave" aria-live="polite">Nothing recorded yet</span>
+            <span class="small muted" id="oInfo"></span>
+          </div>
+        </div>
+
+        <div class="card stack">
+          <h3>Transport</h3>
+          <div class="transport">
+            <button class="skip" id="oBack" aria-label="Back 5 seconds">−5</button>
+            <div style="display:grid;justify-items:center"><button class="bigplay" id="oPlay" aria-label="Play"><svg viewBox="0 0 24 24" id="oPlayIcon" width="28" height="28" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg></button></div>
+            <button class="skip" id="oFwd" aria-label="Forward 5 seconds">+5</button>
+          </div>
+          <div>
+            <input type="range" id="oScrub" min="0" max="150" step="0.1" value="0" aria-label="Position in the show">
+            <div class="time"><span id="oNow">00:00.0</span><span id="oOnTrack"></span><span id="oEnd">02:30</span></div>
+          </div>
+          <p class="muted small" style="margin:0">Open the player in another window with the same show code to watch while you cue. This clock is the show clock: takes are stamped with it.</p>
+        </div>
+
+        <div class="card stack">
+          <div class="row spread">
+            <h3 style="margin:0">Takes</h3>
+            <button class="rec" id="oRec" aria-pressed="false">REC</button>
+          </div>
+          <div class="seg subjects" id="oSubjects" role="group" aria-label="What to frame"></div>
+          <div class="camgrid" id="oCams"></div>
+          <p class="muted small" style="margin:0">With <b>REC</b> armed, tapping a camera (or keys 1–6) writes a cue at the current clock time. A take within half a second of an existing cue replaces it.</p>
+        </div>
+
+        <div class="card stack">
+          <div class="row spread">
+            <h3 style="margin:0">Automation track</h3>
+            <div class="row">
+              <button class="btn" id="oReload">Reload from server</button>
+              <button class="btn danger" id="oClear">Clear track</button>
+              <button class="btn" id="oLeave">Close</button>
+            </div>
+          </div>
+          <div class="cuelist" id="oList" aria-label="Recorded cues"></div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -315,18 +394,23 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
   ['rCode', 'dCode'].forEach(id => codeBox($(id)));
 
   /* ---------------------------------------------------------------- tabs */
+  const MODES = ['remote', 'director', 'operator'];
+  const TAB_IDS = { remote: 'tabRemote', director: 'tabDirector', operator: 'tabOperator' };
   function setMode(mode) {
-    const remote = mode !== 'director';
-    $('tabRemote').setAttribute('aria-selected', String(remote));
-    $('tabDirector').setAttribute('aria-selected', String(!remote));
-    $('remote').hidden = !remote; $('director').hidden = remote;
-    $('title').textContent = remote ? 'Remote' : 'Director';
-    store.set('es_mode', remote ? 'remote' : 'director');
+    if (!MODES.includes(mode)) mode = 'remote';
+    for (const m of MODES) {
+      $(TAB_IDS[m]).setAttribute('aria-selected', String(m === mode));
+      $(m).hidden = m !== mode;
+    }
+    $('title').textContent = mode[0].toUpperCase() + mode.slice(1);
+    store.set('es_mode', mode);
   }
-  $('tabRemote').addEventListener('click', () => setMode('remote'));
-  $('tabDirector').addEventListener('click', () => setMode('director'));
+  for (const m of MODES) $(TAB_IDS[m]).addEventListener('click', () => setMode(m));
   document.querySelector('.tabs').addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const r = $('tabRemote').getAttribute('aria-selected') !== 'true'; setMode(r ? 'remote' : 'director'); (r ? $('tabRemote') : $('tabDirector')).focus(); }
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const cur = MODES.findIndex(m => $(TAB_IDS[m]).getAttribute('aria-selected') === 'true');
+    const next = MODES[(cur + (e.key === 'ArrowRight' ? 1 : MODES.length - 1)) % MODES.length];
+    setMode(next); $(TAB_IDS[next]).focus();
   });
 
   /* ---------------------------------------------------------------- config */
@@ -550,7 +634,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
     for (const c of CFG.cams) {
       const b = document.createElement('button');
       b.className = 'take' + (c.bts ? ' bts' : ''); b.dataset.cam = c.id; b.setAttribute('aria-pressed', 'false');
-      b.innerHTML = `<span class="k">CAM ${c.key}</span><b></b><span></span>`;
+      b.innerHTML = `<span class="k">CAM ${c.key}</span><b></b><span></span><span class="feed" hidden></span>`;
       b.querySelector('b').textContent = c.name; b.querySelectorAll('span')[1].textContent = c.sub;
       b.addEventListener('click', () => take(c.id));
       grid.appendChild(b);
@@ -569,7 +653,27 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
     $('dLiveBtn').textContent = live ? 'Pause live cut' : 'Go live';
     $('dViewers').textContent = `${s.viewers || 0} viewer${s.viewers === 1 ? '' : 's'} following`;
     const onAir = live && s.cue ? s.cue.cam : null;
-    document.querySelectorAll('#dCams .take').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === onAir)));
+    const feeds = s.feeds && typeof s.feeds === 'object' ? s.feeds : null;
+    const feedsStale = s.feeds_age != null && s.feeds_age > 30;
+    document.querySelectorAll('#dCams .take').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.cam === onAir));
+      const el = b.querySelector('.feed');
+      if (!el) return;
+      const f = feeds && feeds[b.dataset.cam];
+      if (!feeds) { el.hidden = true; return; }
+      el.hidden = false;
+      if (!f) { el.textContent = 'NO FEED ASSIGNED'; el.className = 'feed warn'; return; }
+      if (feedsStale && f.recording) { el.textContent = `FEED LINK LOST · ${f.device}`; el.className = 'feed bad'; return; }
+      if (f.status === 'ok') {
+        const bits = ['FEED OK'];
+        if (f.height) bits.push(`${f.height}p`);
+        if (f.three_sixty) bits.push('360°');
+        if (f.recording) bits.push('REC');
+        el.textContent = `${bits.join(' · ')} · ${f.device}`; el.className = 'feed ok';
+      } else {
+        el.textContent = `${String(f.status).replace('_', ' ').toUpperCase()} · ${f.device}`; el.className = 'feed bad';
+      }
+    });
   }
 
   function directorErr(e, el) {
@@ -653,9 +757,208 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
     if (/^[1-6]$/.test(e.key) && CFG.cams[+e.key - 1]) take(CFG.cams[+e.key - 1].id);
   });
 
+  /* ============================================================ OPERATOR */
+  const O = {
+    session: null,          // {code, display_code, title, token}
+    cues: [],               // [{t, cam, subject}] kept sorted
+    subject: 'wide',
+    playing: false, offset: 0, wall: 0,
+    rec: false, dirty: false, saving: false, saveErr: null, savedAt: 0,
+    scrubbing: false, raf: 0, saveTimer: 0,
+  };
+  const oT = () => {
+    const end = CFG ? CFG.end : 150;
+    const t = O.playing ? O.offset + (performance.now() - O.wall) / 1000 : O.offset;
+    return Math.min(end, Math.max(0, t));
+  };
+  const fmt1 = t => fmt(t) + '.' + Math.floor((t % 1) * 10);
+
+  function oPersist() { if (O.session) store.set('es_operator', O.session); else store.del('es_operator'); }
+
+  function oShowUI() {
+    const on = !!O.session;
+    $('oConnect').hidden = on; $('oLive').hidden = !on;
+    if (!on) return;
+    $('oTitle').textContent = O.session.title;
+    $('oShowCode').textContent = O.session.display_code;
+    $('oScrub').max = CFG.end; $('oEnd').textContent = fmt(CFG.end);
+  }
+
+  function oBuild() {
+    const subj = $('oSubjects'); subj.innerHTML = '';
+    for (const s of CFG.subjects) {
+      const b = document.createElement('button'); b.textContent = s.name; b.dataset.v = s.id;
+      b.setAttribute('aria-pressed', String(s.id === O.subject));
+      b.addEventListener('click', () => { O.subject = s.id; subj.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+      subj.appendChild(b);
+    }
+    const grid = $('oCams'); grid.innerHTML = '';
+    for (const c of CFG.cams) {
+      const b = document.createElement('button');
+      b.className = 'take' + (c.bts ? ' bts' : ''); b.dataset.cam = c.id; b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = `<span class="k">CAM ${c.key}</span><b></b><span></span>`;
+      b.querySelector('b').textContent = c.name; b.querySelectorAll('span')[1].textContent = c.sub;
+      b.addEventListener('click', () => oTake(c.id));
+      grid.appendChild(b);
+    }
+  }
+
+  // The cue the track is on at time t (what viewers' guided view shows).
+  function oCueAt(t) {
+    let cur = null;
+    for (const c of O.cues) { if (c.t <= t + 1e-9) cur = c; else break; }
+    return cur;
+  }
+
+  function oTake(cam) {
+    if (!O.session) return;
+    if (!O.rec) { toast('Arm REC to record takes.'); return; }
+    const t = Math.round(oT() * 100) / 100;
+    O.cues = O.cues.filter(c => Math.abs(c.t - t) > 0.5);   // a re-take replaces a nearby cue
+    O.cues.push({ t, cam, subject: O.subject });
+    O.cues.sort((a, b) => a.t - b.t);
+    oMarkDirty(); oRenderList(); oRender();
+  }
+
+  function oMarkDirty() {
+    O.dirty = true;
+    $('oSave').textContent = 'Unsaved changes…'; $('oSave').classList.remove('err');
+    clearTimeout(O.saveTimer);
+    O.saveTimer = setTimeout(oSaveNow, 1200);
+  }
+
+  async function oSaveNow() {
+    if (!O.session || O.saving || !O.dirty) return;
+    O.saving = true; O.dirty = false;
+    try {
+      const d = await api('PUT', `/shows/${O.session.code}/automation`, { body: { cues: O.cues }, token: O.session.token });
+      $('oSave').textContent = `Saved to server · v${d.version} · ${d.count} cue${d.count === 1 ? '' : 's'}`;
+      $('oSave').classList.remove('err');
+    } catch (e) {
+      O.dirty = true;
+      $('oSave').textContent = (e.status === 401 || e.status === 403) ? 'Session ended — reopen the show' : 'Save failed — retrying…';
+      $('oSave').classList.add('err');
+      if (e.status !== 401 && e.status !== 403) { clearTimeout(O.saveTimer); O.saveTimer = setTimeout(oSaveNow, 3000); }
+      else oLeave(true);
+    } finally { O.saving = false; }
+  }
+
+  function oRenderList() {
+    const list = $('oList'); list.innerHTML = '';
+    if (!O.cues.length) {
+      const d = document.createElement('p'); d.className = 'muted small'; d.style.margin = '0';
+      d.textContent = 'No cues yet. Arm REC, play, and take cameras — or reload what’s on the server.';
+      list.appendChild(d); return;
+    }
+    const current = oCueAt(oT());
+    for (const c of O.cues) {
+      const cam = CFG.cams.find(x => x.id === c.cam) || { name: c.cam, key: '?' };
+      const subj = (CFG.subjects.find(s => s.id === c.subject) || {}).name || c.subject;
+      const row = document.createElement('div');
+      row.className = 'cue' + (c === current ? ' now' : ''); row.dataset.t = c.t;
+      const tEl = document.createElement('span'); tEl.className = 't'; tEl.textContent = fmt(c.t);
+      tEl.title = 'Jump here'; tEl.setAttribute('role', 'button'); tEl.tabIndex = 0;
+      const seekTo = () => oSeek(Math.max(0, c.t - 0.05));
+      tEl.addEventListener('click', seekTo);
+      tEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); seekTo(); } });
+      const what = document.createElement('span'); what.className = 'what';
+      what.innerHTML = `<b></b> <small></small>`;
+      what.querySelector('b').textContent = `CAM ${cam.key} · ${cam.name}`;
+      what.querySelector('small').textContent = c.subject === 'wide' ? 'wide' : `framing ${subj}`;
+      const now = document.createElement('button'); now.textContent = '↻ now'; now.title = 'Move this cue to the current time';
+      now.addEventListener('click', () => { c.t = Math.round(oT() * 100) / 100; O.cues.sort((a, b) => a.t - b.t); oMarkDirty(); oRenderList(); });
+      const del = document.createElement('button'); del.textContent = '✕'; del.setAttribute('aria-label', `Delete cue at ${fmt(c.t)}`);
+      del.addEventListener('click', () => { O.cues = O.cues.filter(x => x !== c); oMarkDirty(); oRenderList(); oRender(); });
+      row.append(tEl, what, now, del);
+      list.appendChild(row);
+    }
+  }
+
+  function oRender() {
+    const t = oT();
+    if (!O.scrubbing) { $('oScrub').value = t; }
+    $('oNow').textContent = fmt1(O.scrubbing ? +$('oScrub').value : t);
+    $('oPlayIcon').innerHTML = O.playing ? '<path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/>' : '<path d="M7 4.5v15l12.5-7.5z"/>';
+    $('oPlay').setAttribute('aria-label', O.playing ? 'Pause' : 'Play');
+    const cur = oCueAt(t);
+    $('oOnTrack').textContent = cur ? `track: ${(CFG.cams.find(c => c.id === cur.cam) || {}).name || cur.cam}` : 'track: (built-in script)';
+    document.querySelectorAll('#oCams .take').forEach(b => b.setAttribute('aria-pressed', String(!!cur && b.dataset.cam === cur.cam)));
+    let marked = false;
+    document.querySelectorAll('#oList .cue').forEach(el => {
+      const is = !!cur && Math.abs(+el.dataset.t - cur.t) < 1e-6 && !marked;
+      if (is) marked = true;
+      el.classList.toggle('now', is);
+    });
+    if (O.playing && t >= (CFG ? CFG.end : 150)) { O.playing = false; O.offset = CFG.end; }
+    if (!$('operator').hidden && O.session) O.raf = requestAnimationFrame(oRender);
+  }
+
+  function oStartLoop() { cancelAnimationFrame(O.raf); O.raf = requestAnimationFrame(oRender); }
+  function oSeek(t) { O.offset = Math.max(0, Math.min(CFG.end, t)); O.wall = performance.now(); oRender(); }
+
+  async function oOpen(code, key) {
+    $('oErr').textContent = '';
+    if (!CODE_RE.test(cleanCode(code))) { $('oErr').textContent = 'Codes are 6 letters and numbers, like K7Q-4MZ.'; return; }
+    try {
+      const s = await api('POST', `/shows/${cleanCode(code)}/director`, { body: { key } });
+      O.session = { code: cleanCode(code), display_code: s.display_code, title: s.title, token: s.token };
+      oPersist();
+      const a = await api('GET', `/shows/${O.session.code}/automation`);
+      O.cues = (a.cues || []).slice();
+      $('oSave').textContent = O.cues.length ? `Loaded v${a.version} · ${O.cues.length} cues` : 'Nothing recorded yet';
+      oShowUI(); oRenderList(); oStartLoop();
+    } catch (e) {
+      $('oErr').textContent = e.code === 'director_disabled'
+        ? 'Director mode is switched off on this server. Set a director key in api/config.local.php.' : e.message;
+    }
+  }
+
+  function oLeave(silent) {
+    clearTimeout(O.saveTimer); cancelAnimationFrame(O.raf);
+    O.session = null; O.cues = []; O.playing = false; O.offset = 0; O.rec = false;
+    $('oRec').setAttribute('aria-pressed', 'false');
+    oPersist(); oShowUI();
+    if (!silent) toast('Closed. The track stays on the server.');
+  }
+
+  $('oForm').addEventListener('submit', e => { e.preventDefault(); oOpen($('oCode').value, $('oKey').value); });
+  codeBox($('oCode'));
+  $('oPlay').addEventListener('click', () => {
+    if (!O.playing && oT() >= CFG.end - 0.05) O.offset = 0;
+    O.offset = oT(); O.playing = !O.playing; O.wall = performance.now(); oRender();
+  });
+  $('oBack').addEventListener('click', () => oSeek(oT() - 5));
+  $('oFwd').addEventListener('click', () => oSeek(oT() + 5));
+  $('oScrub').addEventListener('input', () => { O.scrubbing = true; $('oNow').textContent = fmt1(+$('oScrub').value); });
+  $('oScrub').addEventListener('change', () => { O.scrubbing = false; oSeek(+$('oScrub').value); });
+  $('oRec').addEventListener('click', () => { O.rec = !O.rec; $('oRec').setAttribute('aria-pressed', String(O.rec)); });
+  $('oReload').addEventListener('click', async () => {
+    if (!O.session) return;
+    if (O.dirty && !confirm('Replace your unsaved changes with the server copy?')) return;
+    try {
+      const a = await api('GET', `/shows/${O.session.code}/automation`);
+      O.cues = (a.cues || []).slice(); O.dirty = false;
+      $('oSave').textContent = `Loaded v${a.version} · ${O.cues.length} cue${O.cues.length === 1 ? '' : 's'}`;
+      $('oSave').classList.remove('err');
+      oRenderList(); oRender();
+    } catch (e) { toast(e.message); }
+  });
+  $('oClear').addEventListener('click', () => {
+    if (!O.cues.length) return;
+    if (!confirm('Clear the whole automation track? Viewers fall back to the built-in script.')) return;
+    O.cues = []; oMarkDirty(); oRenderList(); oRender();
+  });
+  $('oLeave').addEventListener('click', () => { if (O.dirty) oSaveNow(); oLeave(false); });
+  addEventListener('keydown', e => {
+    if ($('operator').hidden || !O.session || e.target.matches('input, textarea')) return;
+    if (/^[1-6]$/.test(e.key) && CFG.cams[+e.key - 1]) oTake(CFG.cams[+e.key - 1].id);
+    else if (e.key === ' ' && !e.target.matches('button')) { e.preventDefault(); $('oPlay').click(); }
+    else if (e.key.toLowerCase() === 'r') $('oRec').click();
+  });
+
   /* ---------------------------------------------------------------- start */
   (async () => {
-    setMode(qs.get('mode') === 'director' ? 'director' : (store.get('es_mode') || 'remote'));
+    setMode(MODES.includes(qs.get('mode')) ? qs.get('mode') : (store.get('es_mode') || 'remote'));
     await loadConfig();
     buildChart(); buildDirector();
     const r = store.get('es_remote');
@@ -664,6 +967,17 @@ input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px; 
     else if (r && r.room && r.token) { Object.assign(R, r); showRemoteLive(); }
     const d = store.get('es_director');
     if (d && d.code && d.token) { Object.assign(D, d); $('dConnect').hidden = true; $('dLive').hidden = false; renderDirector(); pollDirector(); }
+    oBuild();
+    const o = store.get('es_operator');
+    if (o && o.code && o.token) {
+      O.session = o;
+      try {
+        const a = await api('GET', `/shows/${o.code}/automation`);
+        O.cues = (a.cues || []).slice();
+        $('oSave').textContent = O.cues.length ? `Loaded v${a.version} · ${O.cues.length} cues` : 'Nothing recorded yet';
+        oShowUI(); oRenderList(); oStartLoop();
+      } catch (e) { oLeave(true); }
+    }
   })();
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
