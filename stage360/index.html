@@ -155,13 +155,14 @@ button { cursor: pointer; }
 
 /* ---------- side panel: a printed theatre program ---------- */
 .side {
-  grid-area: side; min-height: 0; background: var(--panel); border-left: 1px solid var(--line);
+  grid-area: side; min-height: 0; min-width: 0; background: var(--panel); border-left: 1px solid var(--line);
   display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto;
   padding-block: 12px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
   gap: 10px;
 }
 @media (max-width: 860px) { .side { border-left: 0; border-top: 1px solid var(--line); } }
-.sidetop { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; }
+.sidetop { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; min-width: 0; }
+.sidetop [data-tyl-nav] { min-width: 0; max-width: 100%; }
 .exp-badge { flex: none; font: 500 10px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--amber); border: 1px solid currentColor; border-radius: 999px; padding: 5px 8px; }
 .pgtabs { display: flex; gap: 4px; }
 .pgtabs button {
