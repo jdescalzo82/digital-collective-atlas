@@ -1,0 +1,1314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Every Seat</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: the theatre is the page. Viewer fills the left, a "front-of-house" panel sits right; on phones the panel stacks under the viewer. House lights down = deliberately dark single theme. */
+:root {
+  --bg: #0e0a10;        /* velvet black, warm-purple bias */
+  --panel: #17111a;
+  --raise: #221a26;
+  --line: #33293a;
+  --fg: #f4ede7;
+  --muted: #aa9eaa;
+  --amber: #f5b95f;     /* follow-spot: guided view */
+  --amber-ink: #241503;
+  --teal: #72d6c9;      /* backstage / BTS */
+  --teal-ink: #062521;
+  --live: #ff6b6b;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --ui: 1;              /* large-controls multiplier */
+  --cap: 1.25rem;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 calc(15px * var(--ui))/1.45 var(--f-body);
+  -webkit-font-smoothing: antialiased; overflow: hidden;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(340px * var(--ui));
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "stage side" "transport side";
+}
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 52%) auto minmax(0, 1fr);
+    grid-template-areas: "stage" "transport" "side";
+  }
+}
+
+/* ---------- viewer ---------- */
+.stage { grid-area: stage; position: relative; overflow: hidden; background: #000; touch-action: none; cursor: grab; }
+.stage.dragging { cursor: grabbing; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+.fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+.fade.on { opacity: 1; }
+
+.hud-top {
+  position: absolute; top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); right: 12px;
+  display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; pointer-events: none;
+}
+.camtag { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px; background: rgb(14 10 16 / .72); backdrop-filter: blur(6px); }
+.camtag .eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.camtag .name { font: 700 calc(17px * var(--ui))/1.15 var(--f-display); }
+.camtag.bts .eyebrow { color: var(--teal); }
+.guidechip {
+  pointer-events: auto; display: flex; align-items: center; gap: 8px; border: 0;
+  padding: 8px 12px; border-radius: 999px; background: rgb(14 10 16 / .72); backdrop-filter: blur(6px);
+  font: 700 calc(13px * var(--ui))/1 var(--f-body); color: var(--muted);
+}
+.guidechip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.guidechip[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); }
+.guidechip[aria-pressed="true"] .dot { background: var(--amber-ink); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.smcall {
+  position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); top: 74px; max-width: min(360px, 70%);
+  font: 500 12px/1.35 var(--f-mono); color: var(--teal); background: rgb(6 37 33 / .78);
+  padding: 6px 10px; border-radius: 8px; pointer-events: none;
+}
+.captions {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(92%, 760px);
+  text-align: center; pointer-events: none;
+}
+.captions span {
+  display: inline; padding: .12em .45em; line-height: 1.6; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  background: rgb(0 0 0 / .78); color: #fff; font: 700 var(--cap)/1.6 var(--f-body); border-radius: 4px;
+}
+.captions span.fx { color: var(--amber); font-weight: 400; font-style: italic; }
+.rejoin {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  border: 0; border-radius: 999px; padding: 10px 16px; background: var(--amber); color: var(--amber-ink);
+  font: 700 calc(14px * var(--ui))/1 var(--f-body); box-shadow: 0 6px 24px rgb(0 0 0 / .5);
+}
+.xrbtn {
+  flex: none; border: 1px solid var(--teal); background: transparent; color: var(--teal); border-radius: 999px;
+  padding: 8px 14px; font: 700 calc(13px * var(--ui))/1 var(--f-body); min-height: calc(40px * var(--ui));
+}
+.xrbtn:hover { background: var(--teal); color: var(--teal-ink); }
+.veil .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.veil .xrbtn { min-height: 46px; padding: 12px 18px; font-size: 15px; }
+.hint { position: absolute; right: 12px; bottom: 12px; font: 500 11px/1 var(--f-mono); color: rgb(255 255 255 / .55); pointer-events: none; }
+
+.veil {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 20px;
+  background: radial-gradient(ellipse at 50% 30%, rgb(245 185 95 / .16), transparent 60%), rgb(10 7 12 / .86);
+  cursor: default;
+}
+.veil-card { max-width: 460px; display: grid; gap: 14px; text-align: left; }
+.veil h1 { margin: 0; font: 700 clamp(40px, 7vw, 64px)/.95 var(--f-display); letter-spacing: -.02em; text-wrap: balance; }
+.veil p { margin: 0; color: var(--muted); }
+.veil .program { font: 500 12px/1.5 var(--f-mono); color: var(--amber); letter-spacing: .06em; text-transform: uppercase; }
+.btn-primary {
+  justify-self: start; border: 0; border-radius: 12px; padding: 14px 22px; background: var(--amber); color: var(--amber-ink);
+  font: 700 calc(17px * var(--ui))/1 var(--f-display);
+}
+.veil ul { margin: 0; padding-left: 1.1em; color: var(--muted); font-size: .92em; display: grid; gap: 2px; }
+
+/* hands-free: chrome fades when idle */
+.app.idle .hud-top, .app.idle .hint { opacity: 0; transition: opacity .6s; }
+.app.idle .stage { cursor: none; }
+
+/* ---------- transport ---------- */
+.transport {
+  grid-area: transport; display: grid; gap: 8px; background: var(--panel); border-top: 1px solid var(--line);
+  padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.trow { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.play {
+  flex: none; width: calc(44px * var(--ui)); height: calc(44px * var(--ui)); border-radius: 50%; border: 0;
+  background: var(--fg); color: var(--bg); display: grid; place-items: center;
+}
+.play svg { width: 45%; height: 45%; fill: currentColor; }
+.tc { flex: none; font: 500 calc(13px * var(--ui))/1 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tc b { color: var(--fg); font-weight: 500; }
+#scrub { flex: 1; min-width: 0; accent-color: var(--amber); height: calc(28px * var(--ui)); }
+.chapters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chapters::-webkit-scrollbar { display: none; }
+.chapters button {
+  flex: none; border: 1px solid var(--line); background: transparent; border-radius: 999px;
+  padding: 5px 10px; font-size: calc(12px * var(--ui)); color: var(--muted); white-space: nowrap;
+}
+.chapters button.now { border-color: var(--amber); color: var(--fg); }
+
+/* ---------- side panel ---------- */
+.side {
+  grid-area: side; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line);
+  padding-block: 16px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; align-content: start; gap: 22px;
+}
+@media (max-width: 860px) { .side { border-left: 0; border-top: 1px solid var(--line); } }
+.side h2 {
+  margin: 0 0 8px; font: 500 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  display: flex; justify-content: space-between; gap: 8px;
+}
+.side h2 .bts-label { color: var(--teal); }
+.povs { display: grid; gap: 6px; }
+.pov {
+  display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; text-align: left;
+  padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise);
+  min-height: calc(48px * var(--ui));
+}
+.pov .key { font: 500 12px/1 var(--f-mono); color: var(--muted); text-align: center; }
+.pov .t { display: grid; gap: 1px; min-width: 0; }
+.pov .t strong { font: 700 calc(15px * var(--ui))/1.2 var(--f-display); }
+.pov .t small { color: var(--muted); font-size: calc(12px * var(--ui)); }
+.pov .flag { font: 500 10px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--amber); visibility: hidden; }
+.pov.guided-pick .flag { visibility: visible; }
+.pov[aria-pressed="true"] { border-color: var(--fg); background: #2d2332; }
+.pov.bts[aria-pressed="true"] { border-color: var(--teal); }
+.pov.bts .key { color: var(--teal); }
+.pov .vid { font: 500 10px/1 var(--f-mono); color: var(--teal); }
+
+.map { width: 100%; height: auto; display: block; background: var(--raise); border-radius: 12px; border: 1px solid var(--line); }
+.map .floor { fill: #1c1520; }
+.map .deck { fill: #2a2030; stroke: #4a3d52; stroke-width: .15; }
+.map .balc { fill: none; stroke: #5b4c63; stroke-width: .15; stroke-dasharray: .6 .4; }
+.map .row { stroke: #3b2f42; stroke-width: .35; }
+.map .lbl { fill: var(--muted); font: 500 1.05px var(--f-mono); letter-spacing: .05px; }
+.map .cam { fill: var(--panel); stroke: var(--fg); stroke-width: .2; cursor: pointer; }
+.map .cam.bts { stroke: var(--teal); }
+.map .cam.on { fill: var(--fg); }
+.map .cam.bts.on { fill: var(--teal); }
+.map .cone { fill: rgb(245 185 95 / .28); stroke: none; }
+.map .perf { stroke: #000; stroke-width: .12; }
+
+.settings { display: grid; gap: 12px; }
+.setting { display: grid; gap: 6px; }
+.setting > span, .setting legend { font-weight: 700; font-size: calc(14px * var(--ui)); }
+.setting small { color: var(--muted); font-size: calc(12px * var(--ui)); }
+fieldset.setting { border: 0; padding: 0; margin: 0; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { flex: 1; border: 0; background: transparent; padding: 9px 6px; font-size: calc(13px * var(--ui)); color: var(--muted); min-height: calc(40px * var(--ui)); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); font-weight: 700; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: calc(40px * var(--ui)); }
+.switch input { width: 22px; height: 22px; accent-color: var(--amber); flex: none; }
+.switch span { display: grid; gap: 1px; }
+input[type=range] { accent-color: var(--amber); width: 100%; }
+.filebtn { display: inline-block; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; color: var(--muted); font-size: calc(13px * var(--ui)); cursor: pointer; }
+.filebtn:hover { border-color: var(--teal); color: var(--fg); }
+.filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.note { color: var(--muted); font-size: calc(12px * var(--ui)); margin: 0; }
+kbd { font: 500 11px/1 var(--f-mono); border: 1px solid var(--line); border-radius: 4px; padding: 2px 5px; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: calc(13px * var(--ui)); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .guidechip[aria-pressed="true"] .dot { animation: none; } .fade { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <section class="stage" id="stage" aria-label="360 degree performance viewer. Drag or use arrow keys to look around.">
+    <canvas id="gl"></canvas>
+    <div class="fade" id="fade"></div>
+    <div class="hud-top">
+      <div class="camtag" id="camtag"><span class="eyebrow" id="camEyebrow">Cam 2 · Audience</span><span class="name" id="camName">Mid-House</span></div>
+      <button class="guidechip" id="guideChip" aria-pressed="true" title="Guided view (G)"><span class="dot"></span><span id="guideText">Guided view</span></button>
+    </div>
+    <div class="smcall" id="smcall" hidden></div>
+    <button class="rejoin" id="rejoin" hidden>Return to guided view</button>
+    <div class="captions" id="captions"></div>
+    <div class="hint" id="hint">Drag to look around · scroll to zoom</div>
+    <div class="veil" id="veil">
+      <div class="veil-card">
+        <span class="program">Tonight · Demo performance · 2 min 30 s</span>
+        <h1>Every Seat</h1>
+        <p>A five-piece band plays “Every Angle” in a virtual theatre. Watch the director’s guided cut, or pick your own seat and look anywhere in 360°.</p>
+        <ul>
+          <li>Headphones give you true binaural sound that turns as you look.</li>
+          <li>Four audience seats, plus two backstage cameras.</li>
+          <li>Captions, audio description and a hands-free mode are in Settings.</li>
+        </ul>
+        <div class="row">
+          <button class="btn-primary" id="start">Take your seat</button>
+          <button class="xrbtn" id="xrStart" hidden>Watch in headset</button>
+        </div>
+        <p class="note" id="xrNote">On Meta Quest or Apple Vision Pro, open this page in the headset browser to watch in VR.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="transport">
+    <div class="trow">
+      <button class="play" id="play" aria-label="Play">
+        <svg viewBox="0 0 24 24" id="playIcon"><path d="M7 4.5v15l12.5-7.5z"/></svg>
+      </button>
+      <span class="tc"><b id="tcNow">00:00</b> / <span id="tcEnd">02:30</span></span>
+      <input type="range" id="scrub" min="0" max="150" step="0.1" value="0" aria-label="Seek">
+      <button class="xrbtn" id="xrBtn" hidden>Enter VR</button>
+    </div>
+    <div class="chapters" id="chapters" aria-label="Chapters"></div>
+  </footer>
+
+  <aside class="side">
+    <div>
+      <h2><span>Your seat</span><span>1–4</span></h2>
+      <div class="povs" id="povMain"></div>
+    </div>
+    <div>
+      <h2><span class="bts-label">Behind the scenes</span><span>5–6</span></h2>
+      <div class="povs" id="povBts"></div>
+    </div>
+    <div>
+      <h2><span>House map</span><span>tap a camera</span></h2>
+      <svg class="map" id="map" viewBox="-14 -12.5 28 36" role="img" aria-label="Top-down map of the theatre with camera positions"></svg>
+    </div>
+    <div>
+      <h2><span>Settings</span></h2>
+      <div class="settings">
+        <fieldset class="setting">
+          <legend>Sound</legend>
+          <div class="seg" id="mixSeg">
+            <button id="mixBinaural" aria-pressed="true">Binaural 3D</button>
+            <button id="mixBoard" aria-pressed="false">Board mix</button>
+          </div>
+          <small>Binaural places each player around you. Use headphones. Board mix is the plain stereo feed from the sound desk.</small>
+        </fieldset>
+        <label class="setting"><span>Vocal clarity</span><input type="range" id="vocal" min="0" max="12" step="1" value="0"><small>Lifts the singer above the band, up to +12 dB.</small></label>
+        <label class="setting"><span>Crowd noise</span><input type="range" id="crowd" min="0" max="100" step="1" value="60"></label>
+        <label class="switch"><span><strong>Captions</strong><small>Lyrics and sound cues</small></span><input type="checkbox" id="optCaptions" checked></label>
+        <fieldset class="setting">
+          <legend>Caption size</legend>
+          <div class="seg" id="capSeg">
+            <button data-size="1rem" aria-pressed="false">Small</button>
+            <button data-size="1.25rem" aria-pressed="true">Medium</button>
+            <button data-size="1.75rem" aria-pressed="false">Large</button>
+          </div>
+        </fieldset>
+        <label class="switch"><span><strong>Audio description</strong><small>A voice describes what happens on stage</small></span><input type="checkbox" id="optAD"></label>
+        <label class="switch"><span><strong>Hands-free</strong><small>Guided view, large captions, controls hide when idle</small></span><input type="checkbox" id="optHands"></label>
+        <label class="switch"><span><strong>Reduce motion</strong><small>Guided view cuts instead of panning</small></span><input type="checkbox" id="optMotion"></label>
+        <label class="switch"><span><strong>Large controls</strong></span><input type="checkbox" id="optLarge"></label>
+        <div class="setting">
+          <span>Your own 360 footage</span>
+          <label class="filebtn">Load an equirectangular video for the current camera<input type="file" id="file" accept="video/*"></label>
+          <p class="note">The clip replaces the virtual theatre for that camera and plays its own audio, synced to the show clock.</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h2><span>Keyboard</span></h2>
+      <div class="keys">
+        <kbd>Space</kbd><span>Play / pause</span>
+        <kbd>← ↑ → ↓</kbd><span>Look around</span>
+        <kbd>1–6</kbd><span>Change camera</span>
+        <kbd>G</kbd><span>Guided view on / off</span>
+        <kbd>C</kbd><span>Captions</span>
+        <kbd>+ −</kbd><span>Zoom</span>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+/* =========================================================
+   SHOW DATA — in production this comes from a show manifest
+   (camera list, stream URLs, guided cue track, captions).
+   ========================================================= */
+const BAR = 2.5, STEP = BAR / 8;          // 96 BPM, eighth-note steps
+const SECTIONS = [
+  { id: 'intro', name: 'Intro',        bars: 4 },
+  { id: 'v1',    name: 'Verse 1',      bars: 8 },
+  { id: 'c1',    name: 'Chorus',       bars: 8 },
+  { id: 'v2',    name: 'Verse 2',      bars: 8 },
+  { id: 'c2',    name: 'Chorus',       bars: 8 },
+  { id: 'solo',  name: 'Guitar solo',  bars: 8 },
+  { id: 'c3',    name: 'Final chorus', bars: 8 },
+  { id: 'outro', name: 'Outro',        bars: 4 },
+  { id: 'bows',  name: 'Bows',         bars: 4 },
+];
+let acc = 0;
+for (const s of SECTIONS) { s.startBar = acc; s.t0 = acc * BAR; acc += s.bars; s.t1 = acc * BAR; }
+const MUSIC_BARS = acc - 4;                // bows have no band
+const END = acc * BAR;                     // 150 s
+const sectionAtBar = b => SECTIONS.find(s => b >= s.startBar && b < s.startBar + s.bars) || SECTIONS.at(-1);
+const sectionAt = t => SECTIONS.find(s => t >= s.t0 && t < s.t1) || SECTIONS.at(-1);
+
+// Venue coordinates in metres: x = house left→right, y = up, z = stage (−) → back of house (+)
+const CAMS = [
+  { id: 'front',   key: 1, name: 'Front Row',  sub: 'Row A, centre aisle', group: 'Audience', pos: [0, 1.15, 2.2],   yaw: 0,           pitch: 0.05, gain: 0,  verb: 0.18 },
+  { id: 'mid',     key: 2, name: 'Mid-House',  sub: 'Row H, centre aisle', group: 'Audience', pos: [0, 1.15, 9],     yaw: 0,           pitch: 0.0,  gain: 3,  verb: 0.3 },
+  { id: 'balcony', key: 3, name: 'Balcony',    sub: 'Front rail, centre',  group: 'Audience', pos: [0, 6.65, 16.2],  yaw: 0,           pitch: -0.2, gain: 6,  verb: 0.42 },
+  { id: 'stage',   key: 4, name: 'On Stage',   sub: 'Between bass and drums', group: 'Audience', pos: [0, 2.2, -6.2], yaw: Math.PI,   pitch: -0.05, gain: -2, verb: 0.12 },
+  { id: 'wings',   key: 5, name: 'Stage-Left Wings', sub: 'Crew and stage manager', group: 'Backstage', pos: [-11.2, 2.45, -5], yaw: Math.PI / 2, pitch: -0.05, gain: 2, verb: 0.22, bts: true },
+  { id: 'foh',     key: 6, name: 'Mix Position', sub: 'Front-of-house sound desk', group: 'Backstage', pos: [4, 1.6, 12.6], yaw: -0.25, pitch: -0.06, gain: 3, verb: 0.3, bts: true },
+];
+const camById = Object.fromEntries(CAMS.map(c => [c.id, c]));
+
+const PERFORMERS = [
+  { id: 'vocal',  name: 'Singer',   color: 0xf5b95f, base: [0, -3.0] },
+  { id: 'guitar', name: 'Guitar',   color: 0x72d6c9, base: [-4.2, -4.6] },
+  { id: 'keys',   name: 'Keys',     color: 0xc792ea, base: [4.4, -4.8] },
+  { id: 'bass',   name: 'Bass',     color: 0x7fa7ff, base: [-2.4, -7.0] },
+  { id: 'drums',  name: 'Drums',    color: 0xff8a7a, base: [2.2, -8.0] },
+];
+const STAGE_Y = 1.0;
+function performerXZ(id, t) {
+  const p = PERFORMERS.find(p => p.id === id); let [x, z] = p.base;
+  if (id === 'vocal') {
+    x = Math.sin(t * 0.21) * 3.2;
+    if (t >= 50 && t < 70) x = -2.5 + Math.sin(t * 0.4) * 1.2;   // walks house-left in verse 2
+    z = -3.0 + Math.sin(t * 0.13) * 0.6;
+  }
+  if (id === 'guitar') {
+    const k = smooth(clamp01((t - 88) / 3)) * (1 - smooth(clamp01((t - 109) / 3)));
+    x = -4.2 + 1.6 * k; z = -4.6 + 2.6 * k;                       // steps down front for the solo
+  }
+  if (id === 'bass') x += Math.sin(t * 0.5) * 0.3;
+  return [x, z];
+}
+function performerHead(id, t) { const [x, z] = performerXZ(id, t); return new THREE.Vector3(x, STAGE_Y + (id === 'drums' ? 1.25 : 1.45), z); }
+
+// Guided cut, written like a stage manager's calling script.
+const CUES = [
+  { t: 0,   cam: 'mid',     look: { yaw: 0, pitch: -0.02 }, call: 'House to half. Wide on the full stage.' },
+  { t: 5,   cam: 'front',   look: 'keys',   call: 'Keys open the song.' },
+  { t: 10,  cam: 'front',   look: 'vocal',  call: 'Verse 1. Follow the singer.' },
+  { t: 20,  cam: 'stage',   look: 'vocal',  call: 'Over the shoulder, out to the house.' },
+  { t: 30,  cam: 'balcony', look: { yaw: 0, pitch: -0.24 }, call: 'Chorus. Wide from the balcony.' },
+  { t: 40,  cam: 'front',   look: 'guitar', call: 'Guitar.' },
+  { t: 50,  cam: 'wings',   look: 'vocal',  call: 'Backstage: from the stage-left wings.' },
+  { t: 60,  cam: 'mid',     look: 'vocal',  call: 'Back to the house.' },
+  { t: 70,  cam: 'stage',   look: { yaw: Math.PI, pitch: -0.02 }, call: 'Chorus 2. Turn to the crowd.' },
+  { t: 80,  cam: 'front',   look: 'drums',  call: 'Drums.' },
+  { t: 90,  cam: 'stage',   look: 'guitar', call: 'Guitar solo. Stay on the guitarist.' },
+  { t: 100, cam: 'front',   look: 'guitar', call: 'Solo, front row.' },
+  { t: 110, cam: 'balcony', look: { yaw: 0, pitch: -0.24 }, call: 'Final chorus. Full stage.' },
+  { t: 120, cam: 'foh',     look: { yaw: -0.25, pitch: -0.06 }, call: 'Backstage: the mix desk.' },
+  { t: 130, cam: 'mid',     look: 'vocal',  call: 'Outro.' },
+  { t: 140, cam: 'stage',   look: { yaw: Math.PI, pitch: 0.02 }, call: 'Bows. Look out at the audience.' },
+];
+const cueAt = t => { let c = CUES[0]; for (const q of CUES) if (q.t <= t) c = q; return c; };
+const nextCue = t => CUES.find(q => q.t > t);
+
+// Lighting cues (what the stage manager calls on headset in the BTS feeds)
+const LX = [
+  { t: 0, n: 2 }, { t: 10, n: 4 }, { t: 30, n: 7 }, { t: 50, n: 9 }, { t: 70, n: 12 },
+  { t: 90, n: 15 }, { t: 110, n: 18 }, { t: 130, n: 21 }, { t: 140, n: 22 },
+];
+const LOOKS = {
+  intro: { cyc: 0x0a1846, spot: [0x3a5bff, 0x3a5bff], speed: 0.2, level: 0.55 },
+  v1:    { cyc: 0x18206a, spot: [0xffb35a, 0x5a7bff], speed: 0.3, level: 0.8 },
+  c1:    { cyc: 0x5e0e55, spot: [0xff3fb0, 0xffffff], speed: 0.9, level: 1.0 },
+  v2:    { cyc: 0x0c3a46, spot: [0x41e0c8, 0xffb35a], speed: 0.3, level: 0.8 },
+  c2:    { cyc: 0x5e0e55, spot: [0xff3fb0, 0xffffff], speed: 0.9, level: 1.0 },
+  solo:  { cyc: 0x532503, spot: [0xffa02a, 0xff5a2a], speed: 1.3, level: 1.0 },
+  c3:    { cyc: 0x6a0f40, spot: [0xffffff, 0xff3fb0], speed: 1.2, level: 1.1 },
+  outro: { cyc: 0x2a160c, spot: [0xffd9a0, 0xffd9a0], speed: 0.1, level: 0.7 },
+  bows:  { cyc: 0x2a1d14, spot: [0xffe6c0, 0xffe6c0], speed: 0.05, level: 0.9 },
+};
+
+// Captions: lyrics plus sound cues
+const LYRICS = {
+  v1: ['Streetlights hum a borrowed tune', 'We wait for doors to open soon', 'Every seat a different view', 'Every view comes back to you'],
+  v2: ['Rigging creaks above the stage', 'Someone’s turning back the page', 'From the rafters to the floor', 'There’s a light behind the door'],
+  c:  ['Turn around, the room is wide', 'Every angle, every side', 'Close your eyes, the sound is near', 'You were always meant to be here'],
+};
+const CAPTIONS = [];
+for (const s of SECTIONS) {
+  const lines = s.id === 'v1' ? LYRICS.v1 : s.id === 'v2' ? LYRICS.v2 : s.id.startsWith('c') ? LYRICS.c : null;
+  if (lines) lines.forEach((txt, i) => CAPTIONS.push({ t0: s.t0 + i * 5, t1: s.t0 + i * 5 + 4.8, txt: '♪ ' + txt }));
+}
+CAPTIONS.push(
+  { t0: 0, t1: 4.5, txt: '[Crowd murmurs. Keys begin.]', fx: true },
+  { t0: 30, t1: 32, txt: '[Crowd cheers]', fx: true },
+  { t0: 90, t1: 95, txt: '[Electric guitar solo]', fx: true },
+  { t0: 130, t1: 134, txt: '[Band slows into the final chords]', fx: true },
+  { t0: 140, t1: 150, txt: '[Applause and cheering]', fx: true },
+);
+const AD = [
+  { t: 0.5, txt: 'The house lights dim. A five-piece band waits on a dark stage under deep blue light.' },
+  { t: 9,   txt: 'The singer, dressed in gold, steps up to the microphone at centre stage.' },
+  { t: 29,  txt: 'The lights flash pink and white. Hands go up across the audience.' },
+  { t: 49,  txt: 'The singer wanders toward the left side of the stage.' },
+  { t: 88,  txt: 'The guitarist, in teal, walks down to the front edge of the stage for a solo.' },
+  { t: 129, txt: 'The lights fade to warm white as the band plays the last chords.' },
+  { t: 140, txt: 'The band bows. The house lights come up and the audience applauds.' },
+];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S = {
+  cam: 'mid', yaw: 0, pitch: 0, fov: 75,
+  guided: true, playing: false, offset: 0, startCtx: 0,
+  reduceMotion: prefersReduced, captions: true, ad: false, hands: false,
+  mix: 'binaural', vocalDb: 0, crowd: 0.6,
+  switching: false, lastInput: performance.now(),
+};
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const clamp01 = v => clamp(v, 0, 1);
+const smooth = x => x * x * (3 - 2 * x);
+const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+const $ = id => document.getElementById(id);
+
+/* =========================================================
+   VIRTUAL THEATRE (stands in for the 360 camera feeds)
+   ========================================================= */
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.xr.enabled = true;
+renderer.xr.setReferenceSpaceType('local');   // origin = viewer's head at session start
+const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 200);
+const xrOn = () => renderer.xr.isPresenting;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07050a);
+scene.fog = new THREE.FogExp2(0x0b0710, 0.018);
+
+const hemi = new THREE.HemisphereLight(0x6a5a80, 0x120a10, 0.35); scene.add(hemi);
+const houseLight = new THREE.AmbientLight(0xffe0b0, 0.0); scene.add(houseLight);
+const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05, ...extra });
+
+// room shell
+const room = new THREE.Mesh(new THREE.BoxGeometry(30, 15, 38), std(0x1a1218, { side: THREE.BackSide }));
+room.position.set(0, 7.5, 5); scene.add(room);
+// stage deck
+const deck = new THREE.Mesh(new THREE.BoxGeometry(26, STAGE_Y, 11), std(0x231b22, { roughness: 0.6 }));
+deck.position.set(0, STAGE_Y / 2, -6.5); scene.add(deck);
+// cyclorama
+const cycMat = new THREE.MeshBasicMaterial({ color: 0x0a1846 });
+const cyc = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), cycMat); cyc.position.set(0, STAGE_Y + 5, -11.9); scene.add(cyc);
+// proscenium
+const proMat = std(0x2b0f17, { roughness: 0.95 });
+for (const sx of [-1, 1]) {
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(4.6, 11, 0.6), proMat); leg.position.set(sx * 11.8, 5.5, -1.2); scene.add(leg);
+  const curtain = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9.5, 10), std(0x15070c)); curtain.position.set(sx * 9.7, STAGE_Y + 4.75, -6.5); curtain.scale.z = 0.3; curtain.position.z = -9.2; // masking leg upstage, clear of the wings camera scene.add(curtain);
+}
+const header = new THREE.Mesh(new THREE.BoxGeometry(30, 3, 0.6), proMat); header.position.set(0, 10.5, -1.2); scene.add(header);
+// truss
+const truss = new THREE.Mesh(new THREE.BoxGeometry(18, 0.3, 0.3), std(0x444048, { metalness: 0.6, roughness: 0.4 })); truss.position.set(0, 8.6, -4.5); scene.add(truss);
+// balcony
+const balc = new THREE.Mesh(new THREE.BoxGeometry(26, 0.5, 8), std(0x1e1519)); balc.position.set(0, 5.25, 19); scene.add(balc);
+const rail = new THREE.Mesh(new THREE.BoxGeometry(26, 0.9, 0.15), std(0x3a2a20, { roughness: 0.5 })); rail.position.set(0, 5.95, 15.05); scene.add(rail);
+
+// seats + audience heads (instanced)
+const seatSpots = [];
+const addRows = (zs, y0) => { for (const z of zs) for (let x = -9.3; x <= 9.31; x += 0.62) {
+  if (Math.abs(x) < 0.75) continue;                                     // centre aisle
+  if (y0 === 0 && x > 2.4 && x < 5.8 && z > 10.8 && z < 14.2) continue; // mix position
+  seatSpots.push([x, y0, z]);
+} };
+addRows(Array.from({ length: 13 }, (_, i) => 2 + i), 0);
+addRows([16.6, 17.6, 18.6, 19.6, 20.6], 5.5);
+const seatMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.9, 0.5), std(0x4a1420), seatSpots.length);
+const headGeo = new THREE.SphereGeometry(0.13, 10, 8);
+const heads = seatSpots.map((p, i) => ({ p, occ: ((i * 7919) % 100) < 86, ph: (i * 1.37) % 6.28, sh: 0.9 + ((i * 31) % 20) / 100 }));
+const occupied = heads.filter(h => h.occ);
+const headMesh = new THREE.InstancedMesh(headGeo, std(0x2a2026, { roughness: 1 }), occupied.length);
+const m4 = new THREE.Matrix4();
+seatSpots.forEach((p, i) => { m4.makeTranslation(p[0], p[1] + 0.45, p[2] + 0.08); seatMesh.setMatrixAt(i, m4); });
+scene.add(seatMesh, headMesh);
+// FOH desk
+const desk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.0, 1.0), std(0x18181c, { roughness: 0.4 })); desk.position.set(4, 0.5, 11.9); scene.add(desk);
+const faders = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.8), new THREE.MeshBasicMaterial({ color: 0x1b3a36 }));
+faders.rotation.x = -Math.PI / 2.6; faders.position.set(4, 1.02, 12.0); scene.add(faders);
+const meters = [];
+for (let i = 0; i < 16; i++) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 0.02), new THREE.MeshBasicMaterial({ color: i % 4 === 3 ? 0xff6b6b : 0x72d6c9 }));
+  m.position.set(3.0 + i * 0.13, 1.35, 11.45); scene.add(m); meters.push(m);
+}
+
+// performers
+function figure(color, scale = 1) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, 0.85, 4, 10), std(color, { roughness: 0.55 }));
+  body.position.y = 0.72; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), std(0xd9b49a, { roughness: 0.7 }));
+  head.position.y = 1.55; g.add(head);
+  g.scale.setScalar(scale); return g;
+}
+const perfObj = {};
+for (const p of PERFORMERS) {
+  const g = figure(p.color);
+  if (p.id === 'drums') {
+    g.children[0].position.y = 0.5; g.children[1].position.y = 1.25;
+    const shell = std(0x9b2b2b, { metalness: 0.3, roughness: 0.4 });
+    const kick = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.4, 20), shell); kick.rotation.x = Math.PI / 2; kick.position.set(0, 0.4, 0.7); g.add(kick);
+    for (const [dx, dy] of [[-0.55, 0.75], [0.55, 0.75], [0.25, 0.85]]) { const tom = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.22, 16), shell); tom.position.set(dx, dy, 0.55); g.add(tom); }
+    for (const dx of [-0.9, 0.9]) { const cym = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.02, 20), std(0xc9a640, { metalness: 0.9, roughness: 0.3 })); cym.position.set(dx, 1.35, 0.45); g.add(cym); }
+  }
+  if (p.id === 'keys') { const kb = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.12, 0.4), std(0x111111)); kb.position.set(0, 0.95, 0.5); g.add(kb); const st = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.06), std(0x333333)); st.position.set(0, 0.45, 0.5); g.add(st); }
+  if (p.id === 'guitar' || p.id === 'bass') { const gtr = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.28, 0.08), std(p.id === 'bass' ? 0x222244 : 0x8a3b12, { roughness: 0.4 })); gtr.position.set(0.05, 0.85, 0.3); gtr.rotation.z = 0.5; g.add(gtr); }
+  if (p.id === 'vocal') { const mic = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 6), std(0x777777, { metalness: 0.8 })); mic.position.set(0, 0.75, 0.45); g.add(mic); }
+  g.rotation.y = 0; // facing the house (+z)
+  scene.add(g); perfObj[p.id] = g;
+}
+// wings: crew, road cases, rope rail
+const sm = figure(0x2a2a30); sm.position.set(-12.2, STAGE_Y, -7.2); sm.rotation.y = Math.PI / 2.4; scene.add(sm);
+const headset = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.03, 6, 16, Math.PI), std(0x111111)); headset.position.y = 1.6; sm.add(headset);
+const smDesk = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.1, 0.6), std(0x1d1d22)); smDesk.position.set(-12.2, STAGE_Y + 0.55, -6.3); scene.add(smDesk);
+const cueLight = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: 0x00ff66 })); cueLight.position.set(-12.0, STAGE_Y + 1.2, -6.1); scene.add(cueLight);
+const crew = figure(0x202024); crew.position.set(-10.6, STAGE_Y, -9.2); crew.rotation.y = 0.8; scene.add(crew);
+for (let i = 0; i < 4; i++) { const box = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 0.7), std(0x111114, { roughness: 0.5 })); box.position.set(-12.6, STAGE_Y + 0.4 + (i % 2) * 0.8, -3 - Math.floor(i / 2) * 0.9); scene.add(box); }
+for (let i = 0; i < 9; i++) { const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 10, 4), std(0x8b7a5a)); rope.position.set(-13.3, STAGE_Y + 5, -2.5 - i * 0.6); scene.add(rope); }
+
+// lighting rig
+const spots = [];
+for (let i = 0; i < 4; i++) {
+  const sl = new THREE.SpotLight(0xffffff, 350, 0, 0.28, 0.55, 2);
+  sl.position.set(-6 + i * 4, 8.4, -4.5); scene.add(sl); scene.add(sl.target);
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(2.4, 9, 24, 1, true).translate(0, -4.5, 0).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.copy(sl.position); scene.add(beam);
+  spots.push({ sl, beam });
+}
+const follow = new THREE.SpotLight(0xfff1dc, 2200, 0, 0.06, 0.4, 2);
+follow.position.set(0, 9.5, 21); scene.add(follow); scene.add(follow.target);
+const footWash = new THREE.PointLight(0xffc890, 20, 14, 2); footWash.position.set(0, 2.2, 0); scene.add(footWash);
+
+function updateTheatre(t) {
+  const sec = sectionAt(t), look = LOOKS[sec.id];
+  cycMat.color.setHex(look.cyc).multiplyScalar(0.75 + 0.25 * Math.sin(t * 0.8));
+  const beat = (t % (BAR / 4)) / (BAR / 4);
+  const punch = (sec.id.startsWith('c') ? 0.35 : 0.1) * (1 - beat);
+  spots.forEach((s, i) => {
+    const col = look.spot[i % 2];
+    s.sl.color.setHex(col); s.beam.material.color.setHex(col);
+    s.sl.intensity = 350 * look.level * (1 + punch);
+    s.beam.material.opacity = 0.05 * look.level * (1 + punch);
+    const a = t * look.speed + i * 1.6;
+    s.sl.target.position.set(Math.sin(a) * 5, STAGE_Y, -5 + Math.cos(a * 0.7) * 2.5);
+    s.beam.lookAt(s.sl.target.position);
+  });
+  const subject = (t >= 88 && t < 110) ? 'guitar' : 'vocal';
+  follow.target.position.copy(performerHead(subject, t)).setY(STAGE_Y + 0.9);
+  follow.intensity = sec.id === 'intro' ? 0 : 2200;
+  houseLight.intensity = sec.id === 'bows' ? 0.9 * smooth(clamp01((t - 140) / 2.5)) : (t < 3 ? 0.45 * (1 - t / 3) : 0);
+  for (const p of PERFORMERS) {
+    const [x, z] = performerXZ(p.id, t); const o = perfObj[p.id];
+    o.position.set(x, STAGE_Y, z);
+    const groove = sec.id === 'bows' ? 0 : Math.abs(Math.sin(t * Math.PI * 96 / 60)) * 0.04;
+    o.children[0].position.y = (p.id === 'drums' ? 0.5 : 0.72) - groove;
+    if (sec.id === 'bows' && p.id !== 'drums') o.rotation.x = 0.45 * Math.max(0, Math.sin((t - 141) * 1.4));
+    else o.rotation.x = 0;
+  }
+  // audience bob on choruses, stand for bows
+  const energy = sec.id.startsWith('c') ? 1 : sec.id === 'solo' ? 0.7 : sec.id === 'bows' ? 0.4 : 0.15;
+  occupied.forEach((h, i) => {
+    const up = sec.id === 'bows' ? 0.5 : 0;
+    const bob = Math.max(0, Math.sin(t * Math.PI * 1.6 + h.ph)) * 0.07 * energy;
+    m4.makeTranslation(h.p[0], h.p[1] + 1.02 * h.sh + bob + up, h.p[2] + 0.1); headMesh.setMatrixAt(i, m4);
+  });
+  headMesh.instanceMatrix.needsUpdate = true;
+  meters.forEach((m, i) => { const v = 0.3 + 0.7 * Math.abs(Math.sin(t * (3 + i * 0.7) + i)) * (sec.id === 'bows' ? 0.3 : 1); m.scale.y = v; m.position.y = 1.15 + 0.2 * v; });
+  cueLight.material.color.setHex(LX.some(c => t > c.t - 3 && t < c.t) ? 0xff2a2a : 0x00ff66);
+}
+
+// Everything built so far is the venue; group it so a real 360 feed can replace it.
+const venue = new THREE.Group();
+[...scene.children].forEach(o => venue.add(o));
+scene.add(venue);
+const venueFog = scene.fog;
+
+// Camera rig: the viewer "sits" at the rig. In a headset the HMD pose is applied inside it.
+const rig = new THREE.Group(); rig.add(camera); scene.add(rig);
+
+/* =========================================================
+   USER-SUPPLIED 360 VIDEO (equirectangular) PER CAMERA
+   ========================================================= */
+const sphereGeo = new THREE.SphereGeometry(20, 96, 48); sphereGeo.scale(-1, 1, 1);
+const sphere = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }));
+sphere.rotation.y = -Math.PI / 2;  // centre of the frame faces the stage (yaw 0)
+sphere.visible = false; scene.add(sphere);
+const videos = {}; // camId -> { el, tex }
+$('file').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const old = videos[S.cam]; if (old) { old.el.pause(); URL.revokeObjectURL(old.el.src); old.tex.dispose(); }
+  const el = document.createElement('video');
+  el.src = URL.createObjectURL(f); el.playsInline = true; el.preload = 'auto'; el.crossOrigin = 'anonymous';
+  const tex = new THREE.VideoTexture(el); tex.colorSpace = THREE.SRGBColorSpace;
+  videos[S.cam] = { el, tex };
+  el.addEventListener('loadedmetadata', () => { syncVideos(true); renderPovs(); });
+  e.target.value = '';
+});
+function syncVideos(force) {
+  const t = showTime();
+  for (const [id, v] of Object.entries(videos)) {
+    const active = id === S.cam && S.playing && t < (v.el.duration || 0);
+    if (active) {
+      if (force || Math.abs(v.el.currentTime - t) > 0.35) v.el.currentTime = t;
+      if (v.el.paused) v.el.play().catch(() => {});
+    } else {
+      if (!v.el.paused) v.el.pause();
+      if (force && v.el.duration) v.el.currentTime = Math.min(t, v.el.duration - 0.05);
+    }
+  }
+  updateMixLevels();
+}
+
+/* =========================================================
+   AUDIO — synthesized band, each player a positioned source.
+   Production version: isolated board feeds + ambisonic room mics,
+   decoded binaurally against the viewer's head direction.
+   ========================================================= */
+let ctx = null;
+const A = {};
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  A.comp = ctx.createDynamicsCompressor(); A.comp.threshold.value = -14; A.comp.ratio.value = 4;
+  A.master = ctx.createGain(); A.master.gain.value = 0.85;
+  A.master.connect(A.comp).connect(ctx.destination);
+  A.music = ctx.createGain(); A.music.connect(A.master);           // muted when a user video plays
+  A.spatial = ctx.createGain(); A.board = ctx.createGain(); A.board.gain.value = 0;
+  A.spatial.connect(A.music); A.board.connect(A.music);
+  A.makeup = ctx.createGain(); A.makeup.connect(A.spatial);
+  // room reverb
+  A.verb = ctx.createConvolver(); A.verb.buffer = impulse(2.4, 2.8);
+  A.verbIn = ctx.createGain(); A.verbIn.gain.value = 0.25; A.verbIn.connect(A.verb).connect(A.music);
+  A.noise = noiseBuffer(2);
+  const boardPan = { vocal: 0, guitar: -0.45, keys: 0.45, bass: -0.15, drums: 0.1 };
+  const level = { vocal: 1, guitar: 0.9, keys: 0.9, bass: 1, drums: 0.9 };
+  A.inst = {};
+  for (const p of PERFORMERS) {
+    const input = ctx.createGain(); input.gain.value = level[p.id];
+    const panner = new PannerNode(ctx, { panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 3, rolloffFactor: 0.7, maxDistance: 80 });
+    const sp = new StereoPannerNode(ctx, { pan: boardPan[p.id] });
+    input.connect(panner).connect(A.makeup);
+    input.connect(sp).connect(A.board);
+    const send = ctx.createGain(); send.gain.value = 0.25; input.connect(send).connect(A.verbIn);
+    A.inst[p.id] = { input, panner, send, bus: null };
+  }
+  // crowd: looping filtered noise from three spots in the house
+  A.crowd = ctx.createGain(); A.crowd.gain.value = 0.6; A.crowd.connect(A.master);
+  A.crowdPanners = [[-6, 1.2, 6], [6, 1.2, 6], [0, 1.2, 13], [0, 6.5, 19]].map(([x, y, z], i) => {
+    const src = ctx.createBufferSource(); src.buffer = A.noise; src.loop = true; src.loopStart = i * 0.3;
+    const lp = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 500 + i * 120, Q: 0.6 });
+    const g = ctx.createGain(); g.gain.value = 0.025;
+    const pn = new PannerNode(ctx, { panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 4, rolloffFactor: 0.6, positionX: x, positionY: y, positionZ: z });
+    src.connect(lp).connect(g).connect(pn).connect(A.crowd); src.start();
+    return { pn, g };
+  });
+  newBuses();
+  updateMixLevels();
+}
+function newBuses() {
+  for (const k in A.inst) {
+    const old = A.inst[k].bus;
+    if (old) { old.gain.setTargetAtTime(0, ctx.currentTime, 0.02); setTimeout(() => old.disconnect(), 300); }
+    const b = ctx.createGain(); b.connect(A.inst[k].input); A.inst[k].bus = b;
+  }
+  if (A.fxBus) { const o = A.fxBus; o.gain.setTargetAtTime(0, ctx.currentTime, 0.05); setTimeout(() => o.disconnect(), 400); }
+  A.fxBus = ctx.createGain(); A.fxBus.connect(A.crowd);
+}
+function noiseBuffer(sec) {
+  const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b;
+}
+function impulse(sec, decay) {
+  const len = ctx.sampleRate * sec, b = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
+  return b;
+}
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+function env(g, t, peak, a, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+function osc(dest, type, f, t, dur, peak, a = 0.01, filt) {
+  const o = new OscillatorNode(ctx, { type, frequency: f }), g = ctx.createGain();
+  let n = o; if (filt) { const fl = new BiquadFilterNode(ctx, filt); o.connect(fl); n = fl; }
+  n.connect(g).connect(dest); env(g, t, peak, a, dur); o.start(t); o.stop(t + a + dur + 0.05); return o;
+}
+function noise(dest, t, dur, peak, filt) {
+  const s = ctx.createBufferSource(); s.buffer = A.noise; const f = new BiquadFilterNode(ctx, filt), g = ctx.createGain();
+  s.connect(f).connect(g).connect(dest); env(g, t, peak, 0.002, dur); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+}
+const CH = { Am: { bass: 45, tri: [57, 60, 64] }, F: { bass: 41, tri: [57, 60, 65] }, C: { bass: 48, tri: [55, 60, 64] }, G: { bass: 43, tri: [55, 59, 62] } };
+const PROG = { verse: ['Am', 'F', 'C', 'G'], chorus: ['F', 'C', 'G', 'Am'], outro: ['F', 'G', 'Am', 'Am'] };
+const MEL = {
+  verse: [[[0, 69, 2], [2, 72, 1], [3, 71, 1], [4, 69, 2], [8, 65, 2], [10, 67, 1], [11, 69, 4]],
+          [[0, 67, 2], [2, 64, 1], [3, 67, 1], [4, 72, 2], [8, 71, 2], [10, 67, 2], [12, 62, 3]]],
+  chorus: [[[0, 72, 3], [3, 72, 1], [4, 74, 2], [6, 72, 2], [8, 76, 3], [11, 74, 1], [12, 72, 3]],
+           [[0, 71, 2], [2, 74, 2], [4, 71, 2], [6, 67, 2], [8, 69, 7]]],
+};
+const PENTA = [69, 72, 74, 76, 79, 81, 84];
+
+function scheduleStep(s, t) {
+  const bar = Math.floor(s / 8), st = s % 8;
+  if (bar >= MUSIC_BARS) {
+    if (s === MUSIC_BARS * 8) { // applause
+      for (let k = 0; k < 4; k++) noise(A.fxBus, t + k * 0.05, 8.5, 0.5, { type: 'bandpass', frequency: 1800 + k * 500, Q: 0.5 });
+    }
+    return;
+  }
+  const sec = sectionAtBar(bar), bi = bar - sec.startBar, id = sec.id;
+  const prog = id.startsWith('c') ? PROG.chorus : id === 'outro' ? PROG.outro : PROG.verse;
+  const ch = CH[prog[bar % 4]];
+  const I = A.inst;
+  const full = id !== 'intro';
+  // cheer at chorus starts
+  if (st === 0 && bi === 0 && id.startsWith('c')) noise(A.fxBus, t, 2.2, 0.35, { type: 'bandpass', frequency: 1400, Q: 0.4 });
+  // drums
+  if (full && !(id === 'outro' && bi === 3 && st > 0)) {
+    const d = I.drums.bus;
+    if (st === 0 || st === 4 || (id.startsWith('c') && st === 3)) {
+      const o = new OscillatorNode(ctx, { type: 'sine', frequency: 130 }), g = ctx.createGain();
+      o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      o.connect(g).connect(d); env(g, t, 0.9, 0.002, 0.32); o.start(t); o.stop(t + 0.4);
+    }
+    if (st === 2 || st === 6) { noise(d, t, 0.16, 0.45, { type: 'bandpass', frequency: 1900, Q: 0.7 }); osc(d, 'triangle', 190, t, 0.08, 0.25); }
+    const open = id.startsWith('c') && st % 2 === 1;
+    noise(d, t, open ? 0.2 : 0.035, open ? 0.12 : 0.09, { type: 'highpass', frequency: 7500 });
+    if (bi === sec.bars - 1 && st >= 6) for (let k = 0; k < 2; k++) osc(d, 'triangle', 140 - k * 30, t + k * STEP / 2, 0.15, 0.35);
+  }
+  // bass
+  if (full && [0, 3, 4, 6].includes(st)) osc(I.bass.bus, 'sawtooth', hz(ch.bass), t, STEP * 0.9, 0.32, 0.005, { type: 'lowpass', frequency: 420, Q: 1.5 });
+  // keys pad
+  if (st === 0) for (const m of ch.tri) for (const det of [-6, 6]) {
+    const o = osc(I.keys.bus, 'sawtooth', hz(m), t, BAR * 0.95, id === 'intro' ? 0.06 : 0.045, 0.25, { type: 'lowpass', frequency: id.startsWith('c') ? 2000 : 1100 });
+    o.detune.value = det;
+  }
+  // guitar
+  if (id === 'solo') {
+    if ((s * 5) % 7 !== 0) {
+      const n = PENTA[(s * 3 + bar * 2 + (st > 4 ? 2 : 0)) % PENTA.length];
+      const o = osc(I.guitar.bus, 'square', hz(n), t, STEP * (st % 4 === 3 ? 1.8 : 0.85), 0.11, 0.004, { type: 'lowpass', frequency: 2600, Q: 2 });
+      if (st === 3) o.detune.setValueAtTime(0, t + 0.05), o.detune.linearRampToValueAtTime(200, t + 0.25);
+    }
+  } else if (full && (id.startsWith('c') || id === 'v2' || (id === 'v1' && st % 2 === 0))) {
+    const notes = [...ch.tri, ch.tri[1] + 12];
+    osc(I.guitar.bus, 'square', hz(notes[st % 4] + 12), t, STEP * 0.7, id.startsWith('c') ? 0.06 : 0.04, 0.003, { type: 'lowpass', frequency: 1800 });
+  }
+  // vocal
+  if (id === 'v1' || id === 'v2' || id.startsWith('c')) {
+    const phrase = MEL[id.startsWith('c') ? 'chorus' : 'verse'][Math.floor(bi / 2) % 2];
+    const stepInPhrase = (bi % 2) * 8 + st;
+    for (const [at, m, len] of phrase) if (at === stepInPhrase) {
+      const dur = len * STEP * 0.95;
+      const o = osc(I.vocal.bus, 'triangle', hz(m), t, dur, 0.3, 0.04, { type: 'lowpass', frequency: 2400 });
+      const lfo = new OscillatorNode(ctx, { frequency: 5.4 }), lg = ctx.createGain(); lg.gain.value = 14;
+      lfo.connect(lg).connect(o.detune); lfo.start(t + 0.15); lfo.stop(t + dur + 0.1);
+      const o2 = osc(I.vocal.bus, 'sawtooth', hz(m), t, dur, 0.05, 0.05, { type: 'bandpass', frequency: 1100, Q: 2 });
+      lg.connect(o2.detune);
+    }
+  }
+}
+let nextStep = 0, schedTimer = null;
+function scheduler() {
+  if (!S.playing || !ctx) return;
+  const now = showTime(), horizon = now + 0.15;
+  while (nextStep * STEP < horizon && nextStep * STEP < END) {
+    const at = S.startCtx + (nextStep * STEP - S.offset);
+    scheduleStep(nextStep, Math.max(at, ctx.currentTime + 0.005));
+    nextStep++;
+  }
+}
+function updateMixLevels() {
+  if (!ctx) return;
+  const now = ctx.currentTime, c = camById[S.cam];
+  const userVid = videos[S.cam] && videos[S.cam].el.duration;
+  A.music.gain.setTargetAtTime(userVid ? 0 : 1, now, 0.05);
+  A.crowd.gain.setTargetAtTime(userVid ? 0 : S.crowd, now, 0.05);
+  const bin = S.mix === 'binaural';
+  A.spatial.gain.setTargetAtTime(bin ? 1 : 0, now, 0.08);
+  A.board.gain.setTargetAtTime(bin ? 0 : 0.75, now, 0.08);
+  A.makeup.gain.setTargetAtTime(Math.pow(10, c.gain / 20), now, 0.1);
+  A.verbIn.gain.setTargetAtTime(bin ? c.verb : 0.12, now, 0.1);
+  A.inst.vocal.input.gain.setTargetAtTime(Math.pow(10, S.vocalDb / 20), now, 0.05);
+}
+function updateListener(t) {
+  if (!ctx) return;
+  const c = camById[S.cam], L = ctx.listener, [x, y, z] = c.pos;
+  const fx = Math.sin(S.yaw) * Math.cos(S.pitch), fy = Math.sin(S.pitch), fz = -Math.cos(S.yaw) * Math.cos(S.pitch);
+  if (L.positionX) {
+    L.positionX.value = x; L.positionY.value = y; L.positionZ.value = z;
+    L.forwardX.value = fx; L.forwardY.value = fy; L.forwardZ.value = fz;
+    L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0;
+  } else { L.setPosition(x, y, z); L.setOrientation(fx, fy, fz, 0, 1, 0); }
+  for (const p of PERFORMERS) {
+    const h = performerHead(p.id, t), pn = A.inst[p.id].panner;
+    pn.positionX.value = h.x; pn.positionY.value = h.y - 0.2; pn.positionZ.value = h.z;
+  }
+}
+
+/* =========================================================
+   CLOCK + TRANSPORT
+   ========================================================= */
+function showTime() { return S.playing && ctx ? Math.min(END, S.offset + (ctx.currentTime - S.startCtx)) : S.offset; }
+function play() {
+  if (!ctx) initAudio();
+  ctx.resume();
+  if (S.offset >= END - 0.05) seek(0);
+  S.startCtx = ctx.currentTime; S.playing = true;
+  nextStep = Math.ceil(S.offset / STEP - 1e-6);
+  lastAdT = S.offset;
+  setPlayIcon(); syncVideos(true);
+}
+function pause() {
+  S.offset = showTime(); S.playing = false;
+  if (ctx) newBuses();
+  try { speechSynthesis.cancel(); } catch {}
+  setPlayIcon(); syncVideos(true);
+}
+function seek(t) {
+  t = clamp(t, 0, END);
+  const was = S.playing;
+  S.offset = t; lastAdT = t;
+  if (ctx) { newBuses(); if (was) S.startCtx = ctx.currentTime; }
+  nextStep = Math.ceil(t / STEP - 1e-6);
+  try { speechSynthesis.cancel(); } catch {}
+  if (S.guided) applyGuided(t, true);
+  syncVideos(true);
+}
+function setPlayIcon() {
+  $('play').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
+  $('playIcon').innerHTML = S.playing ? '<path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/>' : '<path d="M7 4.5v15l12.5-7.5z"/>';
+}
+const fmt = t => { const s = Math.floor(t); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+
+/* =========================================================
+   VIEW CONTROL: guided cut, free look, camera switching
+   ========================================================= */
+function lookAngles(look, camId, t) {
+  if (typeof look === 'object') return look;
+  const c = camById[camId], p = performerHead(look, t);
+  const dx = p.x - c.pos[0], dy = p.y - 0.25 - c.pos[1], dz = p.z - c.pos[2];
+  return { yaw: Math.atan2(dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)) };
+}
+function cutTo(id, { yaw, pitch } = {}) {
+  if (S.switching) return;
+  const apply = () => {
+    S.cam = id;
+    const c = camById[id];
+    const ty = yaw ?? c.yaw;
+    if (xrOn()) {
+      // Never rotate the viewer continuously in a headset; only re-aim at a cut,
+      // so the shot's subject lands wherever they're already facing.
+      const headLocal = S.yaw + rig.rotation.y;
+      rig.rotation.y = headLocal - ty;
+      xrUI.yaw = headLocal; xrUI.dirty = true;
+    } else { S.yaw = ty; S.pitch = pitch ?? c.pitch; }
+    renderCamUI(); syncVideos(true);
+  };
+  if (S.cam === id) { apply(); return; }
+  S.switching = true; $('fade').classList.add('on');
+  setTimeout(() => { apply(); $('fade').classList.remove('on'); S.switching = false; }, 190);
+}
+function applyGuided(t, instant) {
+  const cue = cueAt(t);
+  const a = lookAngles(cue.look, cue.cam, t);
+  if (cue.cam !== S.cam) { cutTo(cue.cam, a); return; }
+  if (instant || S.reduceMotion) {
+    // with reduced motion, only re-frame when the subject drifts well out of shot
+    if (instant || Math.abs(wrap(a.yaw - S.yaw)) > 0.35) { S.yaw = a.yaw; S.pitch = a.pitch; }
+    return;
+  }
+}
+function setGuided(on) {
+  S.guided = on;
+  $('guideChip').setAttribute('aria-pressed', String(on));
+  $('guideText').textContent = on ? 'Guided view' : 'Free look';
+  $('rejoin').hidden = on || !S.started;
+  if (on) applyGuided(showTime(), false);
+  renderCamUI();
+}
+function userLook() { if (S.guided) setGuided(false); S.lastInput = performance.now(); }
+
+// pointer / touch
+const stageEl = $('stage');
+const pointers = new Map(); let pinch0 = 0, fov0 = 75;
+stageEl.addEventListener('pointerdown', e => {
+  if (e.target.closest('button, .veil')) return;
+  stageEl.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  stageEl.classList.add('dragging');
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); fov0 = S.fov; }
+});
+stageEl.addEventListener('pointermove', e => {
+  S.lastInput = performance.now(); idleOff();
+  const p = pointers.get(e.pointerId); if (!p) return;
+  if (pointers.size === 2) {
+    p.x = e.clientX; p.y = e.clientY; const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) S.fov = clamp(fov0 * pinch0 / d, 35, 100); return;
+  }
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (Math.abs(dx) + Math.abs(dy) < 1) return;
+  userLook();
+  const k = (S.fov / 75) * 0.0055;
+  S.yaw = wrap(S.yaw - dx * k); S.pitch = clamp(S.pitch + dy * k, -1.25, 1.25);
+});
+const endPtr = e => { pointers.delete(e.pointerId); if (!pointers.size) stageEl.classList.remove('dragging'); pinch0 = 0; };
+stageEl.addEventListener('pointerup', endPtr); stageEl.addEventListener('pointercancel', endPtr);
+stageEl.addEventListener('wheel', e => { e.preventDefault(); S.fov = clamp(S.fov + e.deltaY * 0.04, 35, 100); }, { passive: false });
+
+addEventListener('keydown', e => {
+  if (e.target.matches('input[type=range]') && e.key.startsWith('Arrow')) return;
+  if (e.target.matches('input, select, textarea') && e.key !== ' ') return;
+  const k = e.key;
+  S.lastInput = performance.now(); idleOff();
+  if (k === ' ') { if (e.target.matches('button')) return; e.preventDefault(); S.playing ? pause() : (startShow(), play()); }
+  else if (k === 'ArrowLeft') { userLook(); S.yaw = wrap(S.yaw - 0.12); e.preventDefault(); }
+  else if (k === 'ArrowRight') { userLook(); S.yaw = wrap(S.yaw + 0.12); e.preventDefault(); }
+  else if (k === 'ArrowUp') { userLook(); S.pitch = clamp(S.pitch + 0.1, -1.25, 1.25); e.preventDefault(); }
+  else if (k === 'ArrowDown') { userLook(); S.pitch = clamp(S.pitch - 0.1, -1.25, 1.25); e.preventDefault(); }
+  else if (k === '+' || k === '=') S.fov = clamp(S.fov - 5, 35, 100);
+  else if (k === '-') S.fov = clamp(S.fov + 5, 35, 100);
+  else if (k.toLowerCase() === 'g') setGuided(!S.guided);
+  else if (k.toLowerCase() === 'c') { $('optCaptions').checked = !$('optCaptions').checked; $('optCaptions').dispatchEvent(new Event('change')); }
+  else if (/^[1-6]$/.test(k)) pickCam(CAMS[+k - 1].id);
+});
+
+function pickCam(id) { setGuided(false); cutTo(id); }
+
+/* =========================================================
+   UI
+   ========================================================= */
+function renderPovs() {
+  for (const [el, list] of [[$('povMain'), CAMS.filter(c => !c.bts)], [$('povBts'), CAMS.filter(c => c.bts)]]) {
+    el.innerHTML = '';
+    for (const c of list) {
+      const b = document.createElement('button');
+      b.className = 'pov' + (c.bts ? ' bts' : ''); b.dataset.cam = c.id;
+      b.innerHTML = `<span class="key">${c.key}</span><span class="t"><strong>${c.name}</strong><small>${c.sub}${videos[c.id] ? ' · <span class="vid">your video</span>' : ''}</small></span><span class="flag">Guided</span>`;
+      b.addEventListener('click', () => pickCam(c.id));
+      el.appendChild(b);
+    }
+  }
+  renderCamUI();
+}
+function renderCamUI() {
+  const c = camById[S.cam], gcam = cueAt(showTime()).cam;
+  document.querySelectorAll('.pov').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.cam === S.cam));
+    b.classList.toggle('guided-pick', b.dataset.cam === gcam);
+  });
+  $('camName').textContent = c.name;
+  $('camEyebrow').textContent = `Cam ${c.key} · ${c.bts ? 'Behind the scenes' : 'Audience'}`;
+  $('camtag').classList.toggle('bts', !!c.bts);
+  document.querySelectorAll('.map .cam').forEach(n => n.classList.toggle('on', n.dataset.cam === S.cam));
+}
+function renderChapters() {
+  const el = $('chapters');
+  for (const s of SECTIONS) {
+    const b = document.createElement('button'); b.textContent = s.name; b.dataset.sec = s.id;
+    b.addEventListener('click', () => { startShow(); seek(s.t0); if (!S.playing) play(); });
+    el.appendChild(b);
+  }
+}
+const SVGNS = 'http://www.w3.org/2000/svg';
+const mk = (tag, attrs, parent) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent && parent.appendChild(n); return n; };
+let mapCone, mapPerf = {};
+function renderMap() {
+  const svg = $('map');
+  mk('rect', { x: -14, y: -12.5, width: 28, height: 36, class: 'floor' }, svg);
+  mk('rect', { x: -13, y: -12, width: 26, height: 11, class: 'deck' }, svg);
+  for (let z = 2; z <= 14; z++) { mk('line', { x1: -9.3, x2: -0.8, y1: z, y2: z, class: 'row' }, svg); mk('line', { x1: 0.8, x2: z > 10.8 && z < 14.2 ? 2.4 : 9.3, y1: z, y2: z, class: 'row' }, svg); if (z > 10.8 && z < 14.2) mk('line', { x1: 5.8, x2: 9.3, y1: z, y2: z, class: 'row' }, svg); }
+  mk('rect', { x: -13, y: 15, width: 26, height: 7.5, class: 'balc' }, svg);
+  mk('rect', { x: 2.8, y: 11.4, width: 2.4, height: 1, fill: '#2b2b33' }, svg);
+  const lbl = (x, y, t, anchor = 'middle') => { const n = mk('text', { x, y, class: 'lbl', 'text-anchor': anchor }, svg); n.textContent = t; };
+  lbl(0, -10.6, 'STAGE'); lbl(-12.6, 22, 'BALCONY ABOVE', 'start'); lbl(-12.6, 0.6, 'WINGS', 'start'); lbl(4, 14.6, 'MIX');
+  mapCone = mk('path', { class: 'cone' }, svg);
+  for (const p of PERFORMERS) mapPerf[p.id] = mk('circle', { r: 0.55, class: 'perf', fill: '#' + p.color.toString(16).padStart(6, '0') }, svg);
+  for (const c of CAMS) {
+    const g = mk('g', { tabindex: 0, role: 'button', 'aria-label': `Switch to ${c.name}` }, svg);
+    mk('circle', { cx: c.pos[0], cy: c.pos[2], r: 0.85, class: 'cam' + (c.bts ? ' bts' : ''), 'data-cam': c.id }, g);
+    const n = mk('text', { x: c.pos[0], y: c.pos[2] + 0.38, class: 'lbl', 'text-anchor': 'middle', style: 'pointer-events:none;font-weight:700' }, g); n.textContent = c.key;
+    g.addEventListener('click', () => pickCam(c.id));
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); pickCam(c.id); } });
+  }
+}
+function updateMap(t) {
+  const c = camById[S.cam], [x, , z] = c.pos, r = 9, half = THREE.MathUtils.degToRad(S.fov * camera.aspect) / 2;
+  const a1 = S.yaw - Math.min(half, 1.4), a2 = S.yaw + Math.min(half, 1.4);
+  mapCone.setAttribute('d', `M${x},${z} L${x + Math.sin(a1) * r},${z - Math.cos(a1) * r} A${r},${r} 0 0 1 ${x + Math.sin(a2) * r},${z - Math.cos(a2) * r} Z`);
+  for (const p of PERFORMERS) { const [px, pz] = performerXZ(p.id, t); mapPerf[p.id].setAttribute('cx', px); mapPerf[p.id].setAttribute('cy', pz); }
+}
+
+let lastCapKey = '', lastSec = '', lastAdT = 0;
+function updateOverlays(t) {
+  // captions
+  let key = '';
+  if (S.captions) {
+    const lines = CAPTIONS.filter(c => t >= c.t0 && t < c.t1);
+    key = lines.map(l => l.txt).join('|');
+    if (key !== lastCapKey) {
+      $('captions').innerHTML = '';
+      for (const l of lines) { const s = document.createElement('span'); s.textContent = l.txt; if (l.fx) s.className = 'fx'; $('captions').appendChild(s); $('captions').appendChild(document.createElement('br')); }
+    }
+  } else if (lastCapKey) $('captions').innerHTML = '';
+  lastCapKey = key;
+  // stage manager's headset calls, only in the backstage feeds
+  const c = camById[S.cam]; let call = '';
+  if (c.bts) {
+    const up = LX.find(q => t > q.t - 3 && t < q.t), go = LX.find(q => t >= q.t && t < q.t + 1.8);
+    if (up) call = `SM (headset): Standby lighting cue ${up.n}.`;
+    else if (go) call = `SM (headset): Lighting cue ${go.n}… GO.`;
+    else { const sec = sectionAt(t); call = `SM (headset): ${sec.name} running. Next: lighting cue ${(LX.find(q => q.t > t) || { n: '—' }).n}.`; }
+  }
+  $('smcall').hidden = !call; if (call) $('smcall').textContent = call;
+  // guided chip with next cue countdown
+  if (S.guided) { const n = nextCue(t); $('guideText').textContent = n ? `Guided · next cut ${Math.ceil(n.t - t)}s` : 'Guided view'; }
+  // chapters + transport
+  const sec = sectionAt(t);
+  if (sec.id !== lastSec) {
+    document.querySelectorAll('.chapters button').forEach(b => b.classList.toggle('now', b.dataset.sec === sec.id));
+    const nb = document.querySelector('.chapters button.now'); nb && nb.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    lastSec = sec.id; renderCamUI();
+  }
+  $('tcNow').textContent = fmt(t);
+  if (!scrubbing) $('scrub').value = t;
+  // audio description (speech synthesis)
+  if (S.ad && S.playing) for (const a of AD) if (a.t > lastAdT && a.t <= t) speak(a.txt);
+  lastAdT = t;
+}
+function speak(txt) { try { const u = new SpeechSynthesisUtterance(txt); u.rate = 1.02; u.volume = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch {} }
+
+// controls wiring
+let scrubbing = false;
+$('scrub').addEventListener('input', e => { scrubbing = true; startShow(); seek(+e.target.value); });
+$('scrub').addEventListener('change', () => { scrubbing = false; });
+$('play').addEventListener('click', () => { startShow(); S.playing ? pause() : play(); });
+$('guideChip').addEventListener('click', () => setGuided(!S.guided));
+$('rejoin').addEventListener('click', () => setGuided(true));
+const seg = (id, fn) => $(id).querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $(id).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); fn(b); }));
+seg('mixSeg', b => { S.mix = b.id === 'mixBoard' ? 'board' : 'binaural'; updateMixLevels(); });
+seg('capSeg', b => document.documentElement.style.setProperty('--cap', b.dataset.size));
+$('vocal').addEventListener('input', e => { S.vocalDb = +e.target.value; updateMixLevels(); });
+$('crowd').addEventListener('input', e => { S.crowd = +e.target.value / 100; updateMixLevels(); });
+$('optCaptions').addEventListener('change', e => { S.captions = e.target.checked; });
+$('optAD').addEventListener('change', e => { S.ad = e.target.checked; if (!S.ad) try { speechSynthesis.cancel(); } catch {} });
+$('optMotion').checked = S.reduceMotion;
+$('optMotion').addEventListener('change', e => { S.reduceMotion = e.target.checked; });
+$('optLarge').addEventListener('change', e => { document.documentElement.style.setProperty('--ui', e.target.checked ? 1.2 : 1); resize(); });
+$('optHands').addEventListener('change', e => {
+  S.hands = e.target.checked;
+  if (S.hands) { setGuided(true); $('capSeg').querySelector('[data-size="1.75rem"]').click(); }
+  idleOff();
+});
+function idleOff() { $('app').classList.remove('idle'); }
+['pointermove', 'pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { S.lastInput = performance.now(); idleOff(); }, { passive: true }));
+
+S.started = false;
+function startShow() {
+  if (S.started) return;
+  S.started = true; $('veil').hidden = true;
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch {}
+}
+$('start').addEventListener('click', () => { startShow(); play(); });
+
+/* =========================================================
+   HEADSETS (WebXR): Meta Quest Browser, Safari on Apple Vision Pro
+   - Quest: controllers (trigger) or hand-tracking pinch
+   - Vision Pro: look + pinch ("transient-pointer" input)
+   ========================================================= */
+const xrUI = { yaw: 0, dirty: true, hover: [null, null], capKey: null };
+function canvasPlane(w, h, pxW, pxH) {
+  const cv = document.createElement('canvas'); cv.width = pxW; cv.height = pxH;
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, fog: false, depthTest: false }));
+  mesh.renderOrder = 10; mesh.visible = false;
+  return { cv, g: cv.getContext('2d'), tex, mesh };
+}
+const menu = canvasPlane(0.9, 0.45, 1200, 600);
+const caps = canvasPlane(1.9, 0.32, 1520, 256);
+rig.add(menu.mesh, caps.mesh);
+// fade sphere for cuts inside the headset
+const fadeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, side: THREE.BackSide, depthTest: false, fog: false }));
+fadeMesh.renderOrder = 20; camera.add(fadeMesh);
+
+// menu layout in canvas pixels
+const MENU_BTNS = [
+  ...CAMS.filter(c => !c.bts).map((c, i) => ({ id: 'cam:' + c.id, x: 30 + i * 288, y: 150, w: 270, h: 150, label: c.name, sub: 'Cam ' + c.key, cam: c })),
+  ...CAMS.filter(c => c.bts).map((c, i) => ({ id: 'cam:' + c.id, x: 30 + i * 288, y: 330, w: 270, h: 150, label: c.name.replace('Stage-Left ', ''), sub: 'Backstage', cam: c })),
+  { id: 'guided', x: 606, y: 330, w: 270, h: 150 },
+  { id: 'play', x: 894, y: 330, w: 270, h: 150 },
+];
+function rrect(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function drawMenu(t) {
+  const g = menu.g, W = 1200, H = 600;
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = 'rgba(23,17,26,0.92)'; rrect(g, 0, 0, W, H, 36); g.fill();
+  g.fillStyle = '#f4ede7'; g.font = '700 54px "Bricolage Grotesque", system-ui, sans-serif'; g.textBaseline = 'alphabetic';
+  g.fillText('Every Seat', 30, 80);
+  g.fillStyle = '#aa9eaa'; g.font = '500 30px "JetBrains Mono", monospace';
+  g.fillText(`${fmt(t)} / ${fmt(END)} · ${sectionAt(t).name}`, 330, 78);
+  g.fillText('Point and pinch, or pull the trigger', 30, 128);
+  const hov = new Set(xrUI.hover);
+  for (const b of MENU_BTNS) {
+    let on = false, label = b.label, sub = b.sub, accent = '#f4ede7';
+    if (b.cam) { on = S.cam === b.cam.id; if (b.cam.bts) accent = '#72d6c9'; }
+    if (b.id === 'guided') { on = S.guided; label = S.guided ? 'Guided: on' : 'Guided: off'; sub = S.guided ? 'Director’s cut' : 'You choose'; accent = '#f5b95f'; }
+    if (b.id === 'play') { label = S.playing ? 'Pause' : 'Play'; sub = 'Show'; }
+    g.fillStyle = on ? accent : hov.has(b.id) ? '#3a2e40' : '#221a26'; rrect(g, b.x, b.y, b.w, b.h, 22); g.fill();
+    g.lineWidth = 3; g.strokeStyle = hov.has(b.id) ? accent : '#33293a'; g.stroke();
+    g.fillStyle = on ? '#120d14' : accent === '#f4ede7' ? '#aa9eaa' : accent; g.font = '500 26px "JetBrains Mono", monospace';
+    g.fillText(sub.toUpperCase(), b.x + 22, b.y + 48);
+    g.fillStyle = on ? '#120d14' : '#f4ede7'; g.font = '700 38px "Atkinson Hyperlegible", system-ui, sans-serif';
+    g.fillText(label, b.x + 22, b.y + 110, b.w - 40);
+  }
+  menu.tex.needsUpdate = true;
+}
+function drawCaps(lines, call) {
+  const g = caps.g, W = 1520, H = 256;
+  g.clearRect(0, 0, W, H);
+  const rows = [...(call ? [{ txt: call, sm: true }] : []), ...lines].slice(-3);
+  rows.forEach((l, i) => {
+    g.font = l.sm ? '500 34px "JetBrains Mono", monospace' : (l.fx ? 'italic 400 48px' : '700 52px') + ' "Atkinson Hyperlegible", system-ui, sans-serif';
+    const w = Math.min(W - 20, g.measureText(l.txt).width + 40), y = H - (rows.length - i) * 80;
+    g.fillStyle = l.sm ? 'rgba(6,37,33,0.85)' : 'rgba(0,0,0,0.8)'; rrect(g, (W - w) / 2, y, w, 72, 12); g.fill();
+    g.fillStyle = l.sm ? '#72d6c9' : l.fx ? '#f5b95f' : '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(l.txt, W / 2, y + 38, W - 40); g.textAlign = 'left';
+  });
+  caps.tex.needsUpdate = true;
+}
+function placeXRUI() {
+  const h = xrUI.yaw, fx = Math.sin(h), fz = -Math.cos(h);
+  menu.mesh.position.set(fx * 0.85, -0.55, fz * 0.85);
+  menu.mesh.lookAt(rig.localToWorld(new THREE.Vector3(0, -0.1, 0)));
+  caps.mesh.position.set(fx * 2.4, -0.42, fz * 2.4);
+  caps.mesh.lookAt(rig.localToWorld(new THREE.Vector3(0, -0.42, 0)));
+}
+const controllers = [0, 1].map(i => {
+  const c = renderer.xr.getController(i);
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]),
+    new THREE.LineBasicMaterial({ color: 0xf5b95f, transparent: true, opacity: 0.8 }));
+  line.scale.z = 3; c.add(line); c.userData.line = line;
+  c.addEventListener('connected', e => { line.visible = e.data.targetRayMode === 'tracked-pointer'; c.userData.mode = e.data.targetRayMode; });
+  c.addEventListener('disconnected', () => { xrUI.hover[i] = null; });
+  c.addEventListener('select', () => { const id = hitMenu(c); if (id) menuAction(id); });
+  rig.add(c); return c;
+});
+const ray = new THREE.Raycaster(), rotM = new THREE.Matrix4();
+function hitMenu(c) {
+  if (!menu.mesh.visible) return null;
+  rotM.identity().extractRotation(c.matrixWorld);
+  ray.ray.origin.setFromMatrixPosition(c.matrixWorld);
+  ray.ray.direction.set(0, 0, -1).applyMatrix4(rotM);
+  const hit = ray.intersectObject(menu.mesh)[0];
+  if (!hit || !hit.uv) return null;
+  const px = hit.uv.x * 1200, py = (1 - hit.uv.y) * 600;
+  const b = MENU_BTNS.find(b => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h);
+  return b ? b.id : null;
+}
+function menuAction(id) {
+  if (id.startsWith('cam:')) pickCam(id.slice(4));
+  else if (id === 'guided') setGuided(!S.guided);
+  else if (id === 'play') S.playing ? pause() : play();
+  xrUI.dirty = true;
+}
+let menuTick = 0;
+function updateXR(t, dt) {
+  // lazy-follow: UI drifts to where you're facing only when you've turned well away
+  const headLocal = wrap(S.yaw + rig.rotation.y);
+  const off = wrap(headLocal - xrUI.yaw);
+  if (Math.abs(off) > 0.75) { xrUI.yaw = wrap(xrUI.yaw + off * Math.min(1, dt * 2.5)); }
+  placeXRUI();
+  controllers.forEach((c, i) => {
+    const id = c.userData.mode === 'tracked-pointer' ? hitMenu(c) : null;
+    if (id !== xrUI.hover[i]) { xrUI.hover[i] = id; xrUI.dirty = true; }
+    if (c.userData.line) c.userData.line.scale.z = id ? 0.85 : 3;
+  });
+  if (xrUI.dirty || ++menuTick % 30 === 0) { drawMenu(t); xrUI.dirty = false; }
+  const lines = S.captions ? CAPTIONS.filter(c => t >= c.t0 && t < c.t1) : [];
+  const call = $('smcall').hidden ? '' : $('smcall').textContent;
+  const key = lines.map(l => l.txt).join('|') + call;
+  if (key !== xrUI.capKey) { drawCaps(lines, call); xrUI.capKey = key; }
+  fadeMesh.material.opacity += ((S.switching ? 1 : 0) - fadeMesh.material.opacity) * 0.4;
+}
+async function enterXR() {
+  startShow();
+  if (!S.playing) play();
+  try {
+    const session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'hand-tracking'] });
+    await renderer.xr.setSession(session);
+    try { renderer.xr.setFoveation(1); } catch {}
+    xrUI.yaw = 0; rig.rotation.y = -S.yaw;  // start facing what the 2D view was facing
+    menu.mesh.visible = caps.mesh.visible = true; xrUI.dirty = true; xrUI.capKey = null;
+    session.addEventListener('end', () => {
+      menu.mesh.visible = caps.mesh.visible = false; fadeMesh.material.opacity = 0;
+      S.yaw = wrap(S.yaw); S.pitch = clamp(S.pitch, -1.25, 1.25); resize();
+    });
+  } catch (err) {
+    $('xrNote').textContent = 'Couldn’t start VR: ' + (err && err.message ? err.message : err);
+  }
+}
+(async () => {
+  try {
+    if (navigator.xr && await navigator.xr.isSessionSupported('immersive-vr')) {
+      $('xrBtn').hidden = false; $('xrStart').hidden = false; $('xrNote').hidden = true;
+      $('xrBtn').addEventListener('click', enterXR); $('xrStart').addEventListener('click', enterXR);
+    }
+  } catch {}
+})();
+
+/* =========================================================
+   RENDER LOOP
+   ========================================================= */
+function resize() {
+  const r = stageEl.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stageEl);
+
+let lastFrame = performance.now(), lastSync = 0;
+const tmpV = new THREE.Vector3();
+function frame(now) {
+  now = now || performance.now();
+  const dt = Math.min(0.1, (now - lastFrame) / 1000); lastFrame = now;
+  const t = showTime();
+  if (S.playing && t >= END) pause();
+  scheduler();
+  if (S.guided && S.started) {
+    const cue = cueAt(t);
+    if (cue.cam !== S.cam) applyGuided(t, false);
+    else if (!S.switching && !xrOn()) {
+      const a = lookAngles(cue.look, cue.cam, t);
+      if (S.reduceMotion) applyGuided(t, false);
+      else { const k = 1 - Math.exp(-dt / 0.55); S.yaw = wrap(S.yaw + wrap(a.yaw - S.yaw) * k); S.pitch += (a.pitch - S.pitch) * k; }
+    }
+  }
+  updateTheatre(t);
+  const c = camById[S.cam];
+  rig.position.set(...c.pos);
+  const v = videos[c.id], useVid = !!(v && v.el.readyState >= 2);
+  venue.visible = !useVid; sphere.visible = useVid; scene.fog = useVid ? null : venueFog;
+  if (useVid && sphere.material.map !== v.tex) { sphere.material.map = v.tex; sphere.material.needsUpdate = true; }
+  sphere.position.copy(rig.position);
+  if (xrOn()) {
+    // head pose drives the view and the binaural listener
+    renderer.xr.getCamera().getWorldDirection(tmpV);
+    S.yaw = Math.atan2(tmpV.x, -tmpV.z); S.pitch = Math.asin(clamp(tmpV.y, -1, 1));
+    updateXR(t, dt);
+  } else {
+    rig.rotation.set(0, 0, 0);
+    const dir = new THREE.Vector3(Math.sin(S.yaw) * Math.cos(S.pitch), Math.sin(S.pitch), -Math.cos(S.yaw) * Math.cos(S.pitch));
+    camera.fov += (S.fov - camera.fov) * 0.2; camera.updateProjectionMatrix();
+    camera.position.set(0, 0, 0); camera.quaternion.identity();
+    rig.updateMatrixWorld(true);
+    camera.lookAt(dir.add(rig.position));
+  }
+  renderer.render(scene, camera);
+  updateListener(t);
+  updateMap(t);
+  updateOverlays(t);
+  if (now - lastSync > 2000) { lastSync = now; if (Object.keys(videos).length) syncVideos(false); }
+  if (S.hands && S.playing && now - S.lastInput > 4000) $('app').classList.add('idle');
+}
+
+renderChapters(); renderMap(); renderPovs();
+S.yaw = 0; S.pitch = -0.02;
+$('tcEnd').textContent = fmt(END); $('scrub').max = END;
+resize(); setPlayIcon();
+renderer.setAnimationLoop(frame);   // setAnimationLoop (not rAF) so it also drives the headset's frame loop
+window.__everySeat = { S, seek, play, pause, cutTo, setGuided };
+</script>
+</body>
+</html>
