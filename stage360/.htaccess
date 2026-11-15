@@ -1,0 +1,5 @@
+AddType application/manifest+json .webmanifest
+# The service worker may update as soon as the file changes
+<Files "sw.js">
+  Header set Cache-Control "no-cache"
+</Files>
