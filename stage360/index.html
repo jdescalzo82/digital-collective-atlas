@@ -70,13 +70,13 @@ button { cursor: pointer; }
   position: absolute; top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); right: 12px;
   display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; pointer-events: none;
 }
-.camtag { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px; background: rgb(14 10 16 / .72); backdrop-filter: blur(6px); }
+.camtag { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px; background: rgb(14 10 16 / .86); }
 .camtag .eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .camtag .name { font: 700 calc(17px * var(--ui))/1.15 var(--f-display); }
 .camtag.bts .eyebrow { color: var(--teal); }
 .guidechip {
   pointer-events: auto; display: flex; align-items: center; gap: 8px; border: 0;
-  padding: 8px 12px; border-radius: 999px; background: rgb(14 10 16 / .72); backdrop-filter: blur(6px);
+  padding: 8px 12px; border-radius: 999px; background: rgb(14 10 16 / .86);
   font: 700 calc(13px * var(--ui))/1 var(--f-body); color: var(--muted);
 }
 .guidechip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
@@ -288,7 +288,7 @@ button { cursor: pointer; }
 /* POV title on the viewer when you pick a seat */
 .povflash {
   position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;
-  padding: 14px 22px; border-radius: 14px; background: rgb(14 10 16 / .74); backdrop-filter: blur(6px);
+  padding: 14px 22px; border-radius: 14px; background: rgb(14 10 16 / .88);
   opacity: 0; transition: opacity .3s;
 }
 .povflash.on { opacity: 1; }
@@ -610,8 +610,20 @@ const $ = id => document.getElementById(id);
    VIRTUAL THEATRE (stands in for the 360 camera feeds)
    ========================================================= */
 const canvas = $('gl');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Phones (touch screen, no WebXR) get a lighter scene: iOS Safari kills a tab that uses too much GPU memory.
+// Add ?lite to the URL to force it on any device, or ?full to turn it off.
+const QS = location.search;
+const HEADSET = /OculusBrowser|Quest|Pico/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && 'xr' in navigator); // Quest, Pico, Vision Pro
+const LITE = /[?&]lite\b/.test(QS) || (!/[?&]full\b/.test(QS) && matchMedia('(pointer: coarse)').matches && !HEADSET);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LITE, powerPreference: LITE ? 'low-power' : 'default' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, LITE ? 1.25 : 2));
+canvas.addEventListener('webglcontextlost', e => {
+  e.preventDefault();
+  try { pause(); } catch {}
+  const v = $('veil'); v.hidden = false;
+  v.querySelector('.veil-card').innerHTML = '<h1>Paused</h1><p>Your device ran short of graphics memory and stopped the 3D view.</p>' +
+    '<a class="btn-primary" style="text-decoration:none" href="' + location.pathname + '?lite">Reload in lite mode</a>';
+});
 renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local');   // origin = viewer's head at session start
 const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 200);
@@ -709,7 +721,7 @@ for (let i = 0; i < 9; i++) { const rope = new THREE.Mesh(new THREE.CylinderGeom
 
 // lighting rig
 const spots = [];
-for (let i = 0; i < 4; i++) {
+for (let i = 0; i < (LITE ? 2 : 4); i++) {
   const sl = new THREE.SpotLight(0xffffff, 350, 0, 0.28, 0.55, 2);
   sl.position.set(-6 + i * 4, 8.4, -4.5); scene.add(sl); scene.add(sl.target);
   const beam = new THREE.Mesh(new THREE.ConeGeometry(2.4, 9, 24, 1, true).translate(0, -4.5, 0).rotateX(-Math.PI / 2),
@@ -720,6 +732,7 @@ for (let i = 0; i < 4; i++) {
 const follow = new THREE.SpotLight(0xfff1dc, 2200, 0, 0.06, 0.4, 2);
 follow.position.set(0, 9.5, 21); scene.add(follow); scene.add(follow.target);
 const footWash = new THREE.PointLight(0xffc890, 20, 14, 2); footWash.position.set(0, 2.2, 0); scene.add(footWash);
+footWash.visible = !LITE;   // hidden lights are left out of the shaders
 
 function updateTheatre(t) {
   const sec = sectionAt(t), look = LOOKS[sec.id];
@@ -1591,9 +1604,12 @@ new ResizeObserver(resize).observe(stageEl);
 
 let lastFrame = performance.now(), lastSync = 0;
 const tmpV = new THREE.Vector3();
+let stageOnScreen = true;
+new IntersectionObserver(es => { stageOnScreen = es[0].isIntersecting; }).observe(stageEl);
 function frame(now) {
   now = now || performance.now();
   const dt = Math.min(0.1, (now - lastFrame) / 1000); lastFrame = now;
+  if (!S.started && !xrOn()) return;   // the title card is plain HTML; nothing to draw yet
   const t = showTime();
   if (S.playing && t >= END) pause();
   scheduler();
@@ -1626,7 +1642,7 @@ function frame(now) {
     rig.updateMatrixWorld(true);
     camera.lookAt(dir.add(rig.position));
   }
-  renderer.render(scene, camera);
+  if (xrOn() || stageOnScreen) renderer.render(scene, camera);
   updateListener(t);
   updateMap(t);
   updateOverlays(t);
