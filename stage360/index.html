@@ -6,6 +6,9 @@
 <title>Every Seat: 360° Live Performance</title>
 <meta name="description" content="Watch a live show from any seat in 360°: pick your seat on the seating chart, with binaural sound and VR headset support">
 <meta name="theme-color" content="#0e0a10">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1395,13 +1398,20 @@ function startShow() {
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch {}
 }
 $('start').addEventListener('click', () => { startShow(); play(); });
+function applyLinkOptions() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('hands') === '1') { $('optHands').checked = true; $('optHands').dispatchEvent(new Event('change')); }
+  const seat = q.get('seat');
+  if (seat && camById[seat]) { setGuided(false); cutTo(seat); }
+  else if (q.get('guided') === '0') setGuided(false);
+}
 
 /* =========================================================
    HEADSETS (WebXR): Meta Quest Browser, Safari on Apple Vision Pro
    - Quest: controllers (trigger) or hand-tracking pinch
    - Vision Pro: look + pinch ("transient-pointer" input)
    ========================================================= */
-const xrUI = { yaw: 0, dirty: true, hover: [null, null], capKey: null };
+const xrUI = { yaw: 0, dirty: true, hover: [null, null], capKey: null, open: true, since: 0, blink: 0, pads: false };
 function canvasPlane(w, h, pxW, pxH) {
   const cv = document.createElement('canvas'); cv.width = pxW; cv.height = pxH;
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
@@ -1411,7 +1421,13 @@ function canvasPlane(w, h, pxW, pxH) {
 }
 const menu = canvasPlane(1.0, 0.5, 1200, 600);
 const caps = canvasPlane(1.9, 0.32, 1520, 256);
-rig.add(menu.mesh, caps.mesh);
+const tab = canvasPlane(0.3, 0.075, 480, 120);
+rig.add(menu.mesh, caps.mesh, tab.mesh);
+(function drawTab() {
+  const g = tab.g; g.fillStyle = '#f7f0e3'; g.beginPath(); g.roundRect(0, 0, 480, 120, 60); g.fill();
+  g.fillStyle = '#1d1418'; g.font = '700 46px "Atkinson Hyperlegible", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('Program  ▴', 240, 62); tab.tex.needsUpdate = true;
+})();
 // fade sphere for cuts inside the headset
 const fadeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, side: THREE.BackSide, depthTest: false, fog: false }));
 fadeMesh.renderOrder = 20; camera.add(fadeMesh);
@@ -1423,7 +1439,8 @@ const vrXY = c => [VR_CH.ox + c.pos[0] * VR_CH.s, VR_CH.oy + (c.pos[2] + 12.5) *
 const MENU_BTNS = [
   ...CAMS.map(c => { const [cx, cy] = vrXY(c); return { id: 'cam:' + c.id, cx, cy, r: 30, cam: c }; }),
   { id: 'guided', x: 640, y: 150, w: 520, h: 104 },
-  { id: 'play',   x: 640, y: 270, w: 520, h: 96 },
+  { id: 'play',   x: 640, y: 270, w: 380, h: 96 },
+  { id: 'hide',   x: 1036, y: 270, w: 124, h: 96 },
 ];
 const VR_AD = { x: 640, y: 392, w: 520, h: 176 };
 let vrSponsor = null, vrSponsorT = 0;
@@ -1475,10 +1492,12 @@ function drawMenu(t) {
   // right page: controls
   g.fillStyle = '#a8561a'; g.font = `500 20px ${MONO}`; g.fillText(`${fmt(t)} / ${fmt(END)} · ${sectionAt(t).name.toUpperCase()}`, 640, 44, 520);
   g.fillStyle = '#1d1418'; g.font = `400 40px ${SERIF}`; g.fillText('Every Seat', 640, 92);
-  g.fillStyle = '#6a5a5f'; g.font = `500 17px ${MONO}`; g.fillText('POINT AND PINCH, OR PULL THE TRIGGER', 640, 118);
+  g.fillStyle = '#6a5a5f'; g.font = `500 17px ${MONO}`;
+  g.fillText(xrUI.pads ? 'STICK ←→ TURN · ↑↓ SEAT · A PLAY · B HIDE' : 'POINT AT A SEAT OR BUTTON AND PINCH', 640, 118, 530);
   for (const b of MENU_BTNS.filter(b => !b.cam)) {
     const h = hov.has(b.id); let on = false, label, sub;
     if (b.id === 'guided') { on = S.guided; label = S.guided ? 'Following the director' : 'Follow the director'; sub = S.guided ? 'GUIDED VIEW ON' : 'YOU CHOOSE THE SEAT'; }
+    else if (b.id === 'hide') { label = 'Hide'; sub = 'B / Y'; }
     else { label = S.playing ? 'Pause' : 'Play'; sub = 'SHOW'; }
     g.fillStyle = on ? '#a8561a' : h ? '#efe4d1' : '#fffaf1'; rrect(g, b.x, b.y, b.w, b.h, 52); g.fill();
     g.lineWidth = h ? 5 : 3; g.strokeStyle = on ? '#a8561a' : '#1d1418'; g.stroke();
@@ -1513,6 +1532,8 @@ function placeXRUI() {
   const h = xrUI.yaw, fx = Math.sin(h), fz = -Math.cos(h);
   menu.mesh.position.set(fx * 0.85, -0.55, fz * 0.85);
   menu.mesh.lookAt(rig.localToWorld(new THREE.Vector3(0, -0.1, 0)));
+  tab.mesh.position.set(fx * 0.85, -0.62, fz * 0.85);
+  tab.mesh.lookAt(rig.localToWorld(new THREE.Vector3(0, -0.1, 0)));
   caps.mesh.position.set(fx * 2.4, -0.42, fz * 2.4);
   caps.mesh.lookAt(rig.localToWorld(new THREE.Vector3(0, -0.42, 0)));
 }
@@ -1521,19 +1542,23 @@ const controllers = [0, 1].map(i => {
   const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]),
     new THREE.LineBasicMaterial({ color: 0xf5b95f, transparent: true, opacity: 0.8 }));
   line.scale.z = 3; c.add(line); c.userData.line = line;
-  c.addEventListener('connected', e => { line.visible = e.data.targetRayMode === 'tracked-pointer'; c.userData.mode = e.data.targetRayMode; });
-  c.addEventListener('disconnected', () => { xrUI.hover[i] = null; });
-  c.addEventListener('select', () => { const id = hitMenu(c); if (id) menuAction(id); });
+  c.addEventListener('connected', e => { line.visible = e.data.targetRayMode === 'tracked-pointer'; c.userData.mode = e.data.targetRayMode; c.userData.src = e.data; c.userData.prev = []; });
+  c.addEventListener('disconnected', () => { xrUI.hover[i] = null; c.userData.src = null; });
+  c.addEventListener('select', () => { unlockAudio(); const id = hitMenu(c); if (id) menuAction(id); });
   rig.add(c); return c;
 });
 const ray = new THREE.Raycaster(), rotM = new THREE.Matrix4();
 function hitMenu(c) {
-  if (!menu.mesh.visible) return null;
   rotM.identity().extractRotation(c.matrixWorld);
   ray.ray.origin.setFromMatrixPosition(c.matrixWorld);
   ray.ray.direction.set(0, 0, -1).applyMatrix4(rotM);
+  if (tab.mesh.visible && ray.intersectObject(tab.mesh).length) return 'open';
+  if (!menu.mesh.visible) return null;
   const hit = ray.intersectObject(menu.mesh)[0];
-  if (!hit || !hit.uv) return null;
+  if (!hit || !hit.uv) {
+    const m = ray.intersectObjects(markers.filter(m => m.group.visible).map(m => m.hit))[0];
+    return m ? 'cam:' + m.object.userData.cam : null;
+  }
   const px = hit.uv.x * 1200, py = (1 - hit.uv.y) * 600;
   // camera dots: the nearest one within reach (dots 2 and 6 sit close together)
   let best = null, bd = Infinity;
@@ -1545,10 +1570,110 @@ function menuAction(id) {
   if (id.startsWith('cam:')) pickCam(id.slice(4));
   else if (id === 'guided') setGuided(!S.guided);
   else if (id === 'play') S.playing ? pause() : play();
+  else if (id === 'hide') setMenuOpen(false);
+  else if (id === 'open') setMenuOpen(true);
   xrUI.dirty = true;
+}
+function setMenuOpen(on) { xrUI.open = on; menu.mesh.visible = on; tab.mesh.visible = !on; xrUI.dirty = true; }
+function unlockAudio() { try { if (!ctx) initAudio(); if (ctx.state !== 'running') ctx.resume(); } catch {} }
+
+/* ---------- Quest controllers: sticks and buttons (xr-standard gamepad mapping) ----------
+   Stick left/right  snap turn 30° (for viewers seated, in a wheelchair or in bed)
+   Stick up/down     next / previous seat
+   Stick press       guided view on/off
+   A or X            play / pause
+   B or Y            show / hide the program                                                     */
+const SNAP = Math.PI / 6;
+function readGamepads() {
+  for (const c of controllers) {
+    const src = c.userData.src, gp = src && src.gamepad; if (!gp) continue;
+    const prev = c.userData.prev || (c.userData.prev = []);
+    const down = i => !!(gp.buttons[i] && gp.buttons[i].pressed);
+    const edge = i => { const d = down(i), was = !!prev[i]; prev[i] = d; return d && !was; };
+    const ax = gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0] || 0, ay = gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1] || 0;
+    // sticks fire once per flick, then re-arm near the centre
+    if (c.userData.stick) { if (Math.hypot(ax, ay) < 0.35) c.userData.stick = false; }
+    else if (Math.abs(ax) > 0.75 && Math.abs(ax) > Math.abs(ay)) { c.userData.stick = true; snapTurn(ax > 0 ? -SNAP : SNAP); }
+    else if (Math.abs(ay) > 0.75) { c.userData.stick = true; stepSeat(ay < 0 ? 1 : -1); }   // stick forward (−y) = next seat
+    if (edge(4)) { unlockAudio(); startShow(); S.playing ? pause() : play(); xrUI.dirty = true; }
+    if (edge(5)) setMenuOpen(!xrUI.open);
+    if (edge(3)) setGuided(!S.guided);
+    xrUI.pads = true;
+  }
+}
+function snapTurn(a) { rig.rotation.y += a; xrUI.yaw = wrap(xrUI.yaw - a); xrUI.blink = 1; }
+function stepSeat(d) { const i = CAMS.findIndex(c => c.id === S.cam); pickCam(CAMS[(i + d + CAMS.length) % CAMS.length].id); xrUI.dirty = true; }
+
+/* ---------- seat markers: every other camera glows where it sits in the theatre ---------- */
+const markerRoot = new THREE.Group(); scene.add(markerRoot);
+const markers = CAMS.map(c => {
+  const group = new THREE.Group(); group.position.set(...c.pos); group.visible = false;
+  const ink = c.bts ? 0x72d6c9 : 0xff5a74;
+  const mat = o => Object.assign(new THREE.MeshBasicMaterial({ color: ink, transparent: true, depthTest: false, fog: false, ...o }));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), mat({ opacity: 0.95 }));
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.24, 0.3, 40), mat({ opacity: 0.8, side: THREE.DoubleSide }));
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(0.75, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.userData.cam = c.id;
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 160;
+  const g = cv.getContext('2d');
+  g.fillStyle = 'rgba(14,10,16,0.82)'; g.beginPath(); g.roundRect(4, 4, 504, 152, 40); g.fill();
+  g.fillStyle = c.bts ? '#72d6c9' : '#ff8fa0'; g.font = '500 30px "JetBrains Mono", monospace'; g.textAlign = 'center';
+  g.fillText(`CAM ${c.key} · ${c.bts ? 'BACKSTAGE' : 'AUDIENCE'}`, 256, 58);
+  g.fillStyle = '#f4ede7'; g.font = '700 54px "Atkinson Hyperlegible", system-ui, sans-serif'; g.fillText(c.name, 256, 120, 480);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, fog: false, opacity: 0.85 }));
+  label.scale.set(1.0, 0.31, 1); label.position.y = 0.62;
+  [core, ring, label].forEach(o => o.renderOrder = 15);
+  group.add(core, ring, hit, label); markerRoot.add(group);
+  return { cam: c, group, ring, label, hit };
+});
+const camWorld = new THREE.Vector3();
+function updateMarkers() {
+  const show = xrOn() && xrUI.open;
+  camera.getWorldPosition(camWorld);
+  const hov = new Set(xrUI.hover);
+  for (const m of markers) {
+    m.group.visible = show && m.cam.id !== S.cam;
+    if (!m.group.visible) continue;
+    // keep a steady apparent size whether the seat is 3 m or 20 m away
+    const d = camWorld.distanceTo(m.group.position), h = hov.has('cam:' + m.cam.id);
+    m.group.scale.setScalar(clamp(d * 0.05, 0.35, 2.4) * (h ? 1.3 : 1));
+    m.ring.lookAt(camWorld);
+    m.label.material.opacity = h ? 1 : 0.8;
+  }
+}
+
+/* ---------- Quest 2 performance ----------
+   Quest 2 runs WebXR at 90 Hz. Rendering two ~1832×1920 eyes with five live spotlights on
+   physically based materials is the main cost, so the headset steps quality down when frames
+   run long: 1 = cheaper (Lambert) materials, 2 = fewer moving lights, 3 = ask for 72 Hz.       */
+const IS_QUEST2 = /Quest 2/.test(navigator.userAgent);   // a hint only, the adaptive check below does the real work
+const Q = { level: 0, ema: 0, slowFor: 0, grace: 0 };
+const litMeshes = [];
+venue.traverse(o => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial) litMeshes.push(o); });
+function setQuality(level) {
+  level = clamp(level, 0, 3); if (level === Q.level) return;
+  Q.level = level; Q.grace = 2.5; Q.slowFor = 0;
+  for (const o of litMeshes) {
+    const full = o.userData.fullMat || (o.userData.fullMat = o.material);
+    if (level >= 1) {
+      o.material = o.userData.liteMat || (o.userData.liteMat = new THREE.MeshLambertMaterial({ color: full.color, side: full.side, emissive: full.emissive, transparent: full.transparent, opacity: full.opacity }));
+    } else o.material = full;
+  }
+  spots.forEach((s, i) => { s.sl.visible = level < 2 || i % 2 === 0; });
+  footWash.visible = level < 2;
+  if (level >= 3) { const xs = renderer.xr.getSession(); try { if (xs && xs.updateTargetFrameRate && [...(xs.supportedFrameRates || [])].includes(72)) xs.updateTargetFrameRate(72); } catch {} }
+}
+function watchFrameRate(dt) {
+  const xs = renderer.xr.getSession(), hz = (xs && xs.frameRate) || 90;
+  if (Q.grace > 0) { Q.grace -= dt; return; }
+  Q.ema = Q.ema ? Q.ema * 0.95 + dt * 0.05 : dt;
+  if (Q.ema > 1.18 / hz) { Q.slowFor += dt; if (Q.slowFor > 1.5 && Q.level < 3) setQuality(Q.level + 1); }
+  else Q.slowFor = Math.max(0, Q.slowFor - dt);
 }
 let menuTick = 0;
 function updateXR(t, dt) {
+  readGamepads(); updateMarkers(); watchFrameRate(dt);
   // lazy-follow: UI drifts to where you're facing only when you've turned well away
   const headLocal = wrap(S.yaw + rig.rotation.y);
   const off = wrap(headLocal - xrUI.yaw);
@@ -1560,34 +1685,56 @@ function updateXR(t, dt) {
     if (c.userData.line) c.userData.line.scale.z = id ? 0.85 : 3;
   });
   if (xrUI.dirty || ++menuTick % 30 === 0) { drawMenu(t); xrUI.dirty = false; }
-  const lines = S.captions ? CAPTIONS.filter(c => t >= c.t0 && t < c.t1) : [];
-  const call = $('smcall').hidden ? '' : $('smcall').textContent;
+  let lines = S.captions ? CAPTIONS.filter(c => t >= c.t0 && t < c.t1) : [];
+  let call = $('smcall').hidden ? '' : $('smcall').textContent;
+  // messages for the viewer, shown in the caption strip
+  const inVR = (performance.now() - xrUI.since) / 60000;
+  if (ctx && ctx.state !== 'running') call = 'Pull a trigger or pinch to start the sound.';
+  else if (inVR > 20 && inVR < 20.25) call = 'You’ve watched for 20 minutes. Take a break if you need one: press B or Y for the program.';
   const key = lines.map(l => l.txt).join('|') + call;
   if (key !== xrUI.capKey) { drawCaps(lines, call); xrUI.capKey = key; }
-  fadeMesh.material.opacity += ((S.switching ? 1 : 0) - fadeMesh.material.opacity) * 0.4;
+  xrUI.blink = Math.max(0, (xrUI.blink || 0) - dt * 7);   // brief dip to black on a snap turn (comfort)
+  fadeMesh.material.opacity += ((S.switching ? 1 : xrUI.blink > 0.5 ? 0.9 : 0) - fadeMesh.material.opacity) * 0.4;
+}
+const XR_OPTS = { optionalFeatures: ['local-floor', 'hand-tracking'] };
+async function beginXR(session) {
+  startShow();
+  if (!S.playing) { unlockAudio(); play(); }
+  await renderer.xr.setSession(session);
+  try { renderer.xr.setFoveation(1); } catch {}
+  xrUI.yaw = 0; rig.rotation.y = -S.yaw;  // start facing what the 2D view was facing
+  xrUI.since = performance.now(); xrUI.dirty = true; xrUI.capKey = null; xrUI.pads = false;
+  caps.mesh.visible = true; setMenuOpen(true);
+  if (IS_QUEST2) setQuality(1); Q.ema = 0; Q.grace = 3;
+  session.addEventListener('end', () => {
+    menu.mesh.visible = caps.mesh.visible = tab.mesh.visible = false; fadeMesh.material.opacity = 0;
+    setQuality(0);
+    S.yaw = wrap(S.yaw); S.pitch = clamp(S.pitch, -1.25, 1.25); resize();
+    offerXR();
+  });
 }
 async function enterXR() {
-  startShow();
-  if (!S.playing) play();
-  try {
-    const session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'hand-tracking'] });
-    await renderer.xr.setSession(session);
-    try { renderer.xr.setFoveation(1); } catch {}
-    xrUI.yaw = 0; rig.rotation.y = -S.yaw;  // start facing what the 2D view was facing
-    menu.mesh.visible = caps.mesh.visible = true; xrUI.dirty = true; xrUI.capKey = null;
-    session.addEventListener('end', () => {
-      menu.mesh.visible = caps.mesh.visible = false; fadeMesh.material.opacity = 0;
-      S.yaw = wrap(S.yaw); S.pitch = clamp(S.pitch, -1.25, 1.25); resize();
-    });
-  } catch (err) {
-    $('xrNote').textContent = 'Couldn’t start VR: ' + (err && err.message ? err.message : err);
-  }
+  try { await beginXR(await navigator.xr.requestSession('immersive-vr', XR_OPTS)); }
+  catch (err) { $('xrNote').hidden = false; $('xrNote').textContent = 'Couldn’t start VR: ' + (err && err.message ? err.message : err); }
 }
+// Meta Quest Browser shows its own "Enter VR" button in the address bar for pages that offer a session.
+function offerXR() {
+  if (!navigator.xr || !navigator.xr.offerSession) return;
+  navigator.xr.offerSession('immersive-vr', XR_OPTS).then(beginXR).catch(() => {});
+}
+// Links can open a seat directly: ?seat=balcony  ?hands=1 (hands-free)  ?guided=0
+const LAUNCH_QS = new URLSearchParams(location.search);
 (async () => {
   try {
     if (navigator.xr && await navigator.xr.isSessionSupported('immersive-vr')) {
       $('xrBtn').hidden = false; $('xrStart').hidden = false; $('xrNote').hidden = true;
       $('xrBtn').addEventListener('click', enterXR); $('xrStart').addEventListener('click', enterXR);
+      // Installed from the Meta Horizon Store (a packaged web app): go straight into the headset.
+      // Tapping the app icon counts as the click that WebXR needs.
+      if (window.getDigitalGoodsService !== undefined || LAUNCH_QS.get('source') === 'pwa' && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches) {
+        try { await beginXR(await navigator.xr.requestSession('immersive-vr', XR_OPTS)); return; } catch {}
+      }
+      offerXR();
     }
   } catch {}
 })();
@@ -1635,6 +1782,7 @@ function frame(now) {
     S.yaw = Math.atan2(tmpV.x, -tmpV.z); S.pitch = Math.asin(clamp(tmpV.y, -1, 1));
     updateXR(t, dt);
   } else {
+    if (markers[0].group.visible) markers.forEach(m => m.group.visible = false);
     rig.rotation.set(0, 0, 0);
     const dir = new THREE.Vector3(Math.sin(S.yaw) * Math.cos(S.pitch), Math.sin(S.pitch), -Math.cos(S.yaw) * Math.cos(S.pitch));
     camera.fov += (S.fov - camera.fov) * 0.2; camera.updateProjectionMatrix();
@@ -1650,11 +1798,12 @@ function frame(now) {
   if (S.hands && S.playing && now - S.lastInput > 4000) $('app').classList.add('idle');
 }
 
-renderChapters(); renderMap(); renderCamUI(); goPage(0); fillAds();
+renderChapters(); renderMap(); renderCamUI(); goPage(0); fillAds(); applyLinkOptions();
 S.yaw = 0; S.pitch = -0.02;
 $('tcEnd').textContent = fmt(END); $('scrub').max = END;
 resize(); setPlayIcon();
 renderer.setAnimationLoop(frame);   // setAnimationLoop (not rAF) so it also drives the headset's frame loop
+if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {}));
 window.__everySeat = { S, seek, play, pause, cutTo, setGuided, goPage, drawMenu: t => (drawMenu(t), menu.cv) };
 </script>
 <script src="/tyl-privacy.js" defer></script>

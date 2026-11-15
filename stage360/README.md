@@ -76,6 +76,17 @@ The cheapest HTTPS host is GitHub Pages: copy the file into a Pages-enabled fold
 
 ---
 
+## Meta Quest
+
+The player is Quest-first:
+
+- **Enter VR** from the page button, from the browser's own Enter-VR icon in the address bar (`offerSession`), or — installed from the Meta Horizon Store — straight into the headset on launch (tapping the app icon counts as the user gesture; sound unlocks on the first trigger pull or pinch).
+- **Controls** (xr-standard gamepads): stick left/right snap-turns 30° with a blink to black; stick forward/back changes seat; stick press and the `Guided` button toggle the director's cut; A/X play-pause; B/Y hides the program behind a small "Program ▴" tab. Hand tracking: point and pinch.
+- **Seat markers**: with the program open, every other camera glows in the theatre itself — a dot, a ring and a floating POV title, kept at a steady apparent size. Point and select one to move there.
+- **Quest 2 performance**: starts at quality level 1 (Lambert materials) on Quest 2 and adapts: if frames run long it drops moving lights, then asks the session for 72 Hz (`updateTargetFrameRate`). Foveation is 1.
+- **Comfort**: no artificial smooth motion, cuts fade through black, and the caption strip suggests a break after 20 minutes.
+- **PWA**: `manifest.webmanifest`, icons and `sw.js` (network-first page, cached three.js) make it installable. Package for the Horizon Store with Meta's Bubblewrap fork: `bubblewrap init --manifest=https://toolkityourlife.com/EverySeat/manifest.webmanifest --metaquest`, then upload the signed APK with `ovr-platform-util`. Deep links: `?seat=balcony`, `?hands=1`, `?guided=0`.
+
 ## Hospice, care and accessibility
 
 - **One-tap start** for a carer: send a link or QR code that opens straight into the guided view, hands-free mode and large captions.
