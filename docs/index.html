@@ -74,7 +74,8 @@
 
       <div id="name-entry-block" class="entry system-alert">
         <span class="timestamp">[NOW]</span> <span class="sender">SYSTEM ALERT</span>: BRIDGE DISCONNECTED. MANUAL OVERRIDE REQUIRED.<br><br>
-        ENTER DESIGNATION: <input type="text" id="user-name-input" placeholder="Type your name..." autocomplete="off">
+        ENTER DESIGNATION: <input type="text" id="user-name-input" placeholder="Type your name..." autocomplete="off" maxlength="64" aria-label="Your designation" aria-describedby="name-error">
+        <span id="name-error" class="form-error" role="alert" style="display:none"></span>
       </div>
 
       <div id="post-login-content" class="hidden">
@@ -109,9 +110,13 @@
         <div class="ad-slot" data-slot="inline" aria-hidden="true"></div>
 
         <div class="footer-stats">
-          <p>ACTIVE BRIDGES: <span id="fork-count">FETCHING...</span></p>
+          <p>ACTIVE BRIDGES: <span id="fork-count" aria-live="polite">FETCHING...</span></p>
           <p>DAYS TO CLOSEST APPROACH: <span id="countdown">11</span></p>
           <p><a href="download.html" class="subtle-link">[DOWNLOAD EVERYTHING]</a></p>
+          <p>
+            <button type="button" id="change-name-btn" class="link-btn">[CHANGE DESIGNATION]</button>
+            <button type="button" id="forget-me-btn" class="link-btn">[FORGET ME]</button>
+          </p>
         </div>
       </div>
     </div>
@@ -119,6 +124,7 @@
 
   <div class="ad-slot" data-slot="bottom" aria-hidden="true"></div>
 
+  <script src="api.js"></script>
   <script src="terminal.js"></script>
 </body>
 </html>

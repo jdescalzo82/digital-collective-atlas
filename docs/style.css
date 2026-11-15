@@ -211,6 +211,31 @@ input {
   text-decoration: underline;
 }
 
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0 0.5rem;
+  color: var(--dim-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.link-btn:hover,
+.link-btn:focus-visible {
+  text-decoration: underline;
+}
+
+.form-error {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--alert-color);
+}
+
+#accept-risk-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 /* GENERIC PAGE WRAPPER FOR SUBPAGES */
 .page {
   max-width: 800px;

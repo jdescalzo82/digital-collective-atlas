@@ -121,3 +121,13 @@ python3 scripts/build_site.py
 This regenerates `docs/stories/`, `docs/archive/`, the tab hub pages, `sitemap.xml` and `robots.txt`. `index.html`, `join.html` and `download.html` are hand-written; the script only refreshes their tab bar.
 
 **Turning on ads:** paste your AdSense publisher ID (and optional slot IDs) into `docs/ads.js`, and add `docs/ads.txt`. Until then, the ad slots stay hidden. Add `?ads=preview` to any URL to see where they go.
+
+---
+
+## Backend (optional)
+
+The site runs as plain static pages, but `server/` adds a dependency-free Python
+backend for every interactive control: consent, designations (register, rename,
+forget), a cached fork counter, the live countdown, and a self-hosted download
+mirror. Run it with `python3 -m server`. Setup, API and deployment are in
+[server/README.md](./server/README.md).

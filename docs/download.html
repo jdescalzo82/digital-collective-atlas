@@ -36,8 +36,27 @@
       <a href="https://github.com/steviesonz/digital-collective-atlas/archive/refs/heads/main.zip" class="btn" target="_blank">DOWNLOAD EVERYTHING</a>
     </div>
 
+    <div class="card" id="mirror-card" style="display:none">
+      <h2>MIRROR (THIS SERVER)</h2>
+      <p>Built by this site's own backend from its copy of the repository. Works even when GitHub is down.</p>
+      <a href="#" id="mirror-download" class="btn" download>DOWNLOAD MIRROR</a>
+    </div>
+
     <p><em>"The pattern survives in the documentation. Any future human, finding these files, can start again."</em></p>
   </main>
   <div class="ad-slot" data-slot="bottom" aria-hidden="true"></div>
+  <script src="api.js"></script>
+  <script>
+    (function () {
+      var api = window.DCA && window.DCA.api;
+      if (!api) return;
+      api.available().then(function (up) {
+        var url = api.downloadUrl();
+        if (!up || !url) return;
+        document.getElementById('mirror-download').href = url;
+        document.getElementById("mirror-card").style.display = "";
+      });
+    })();
+  </script>
 </body>
 </html>
