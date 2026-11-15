@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Every Seat</title>
+<title>Every Seat: 360° Live Performance</title>
+<meta name="description" content="Watch a live show from any seat in 360°: pick your seat on the seating chart, with binaural sound and VR headset support">
+<meta name="theme-color" content="#0e0a10">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@500&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap">
 <style>
 /* Layout: the theatre is the page. Viewer fills the left, a "front-of-house" panel sits right; on phones the panel stacks under the viewer. House lights down = deliberately dark single theme. */
 :root {
@@ -24,6 +26,7 @@
   --live: #ff6b6b;
   --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-serif: "Fraunces", Georgia, "Times New Roman", serif;
   --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --ui: 1;              /* large-controls multiplier */
   --cap: 1.25rem;
@@ -117,7 +120,7 @@ button { cursor: pointer; }
 .veil-card { max-width: 460px; display: grid; gap: 14px; text-align: left; }
 .veil h1 { margin: 0; font: 700 clamp(40px, 7vw, 64px)/.95 var(--f-display); letter-spacing: -.02em; text-wrap: balance; }
 .veil p { margin: 0; color: var(--muted); }
-.veil .program { font: 500 12px/1.5 var(--f-mono); color: var(--amber); letter-spacing: .06em; text-transform: uppercase; }
+.veil .bill { font: 500 12px/1.5 var(--f-mono); color: var(--amber); letter-spacing: .06em; text-transform: uppercase; }
 .btn-primary {
   justify-self: start; border: 0; border-radius: 12px; padding: 14px 22px; background: var(--amber); color: var(--amber-ink);
   font: 700 calc(17px * var(--ui))/1 var(--f-display);
@@ -150,47 +153,147 @@ button { cursor: pointer; }
 }
 .chapters button.now { border-color: var(--amber); color: var(--fg); }
 
-/* ---------- side panel ---------- */
+/* ---------- side panel: a printed theatre program ---------- */
 .side {
-  grid-area: side; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line);
-  padding-block: 16px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; align-content: start; gap: 22px;
+  grid-area: side; min-height: 0; background: var(--panel); border-left: 1px solid var(--line);
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto;
+  padding-block: 12px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+  gap: 10px;
 }
 @media (max-width: 860px) { .side { border-left: 0; border-top: 1px solid var(--line); } }
-.side h2 {
-  margin: 0 0 8px; font: 500 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
-  display: flex; justify-content: space-between; gap: 8px;
+.sidetop { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; }
+.exp-badge { flex: none; font: 500 10px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--amber); border: 1px solid currentColor; border-radius: 999px; padding: 5px 8px; }
+.pgtabs { display: flex; gap: 4px; }
+.pgtabs button {
+  flex: 1; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 8px 8px 2px 2px;
+  padding: 7px 4px; font: 700 calc(12px * var(--ui))/1 var(--f-body); min-height: calc(34px * var(--ui));
 }
-.side h2 .bts-label { color: var(--teal); }
-.povs { display: grid; gap: 6px; }
-.pov {
-  display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; text-align: left;
-  padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise);
-  min-height: calc(48px * var(--ui));
-}
-.pov .key { font: 500 12px/1 var(--f-mono); color: var(--muted); text-align: center; }
-.pov .t { display: grid; gap: 1px; min-width: 0; }
-.pov .t strong { font: 700 calc(15px * var(--ui))/1.2 var(--f-display); }
-.pov .t small { color: var(--muted); font-size: calc(12px * var(--ui)); }
-.pov .flag { font: 500 10px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--amber); visibility: hidden; }
-.pov.guided-pick .flag { visibility: visible; }
-.pov[aria-pressed="true"] { border-color: var(--fg); background: #2d2332; }
-.pov.bts[aria-pressed="true"] { border-color: var(--teal); }
-.pov.bts .key { color: var(--teal); }
-.pov .vid { font: 500 10px/1 var(--f-mono); color: var(--teal); }
+.pgtabs button[aria-current="page"] { background: #f7f0e3; color: #1d1418; border-color: #f7f0e3; }
 
-.map { width: 100%; height: auto; display: block; background: var(--raise); border-radius: 12px; border: 1px solid var(--line); }
-.map .floor { fill: #1c1520; }
-.map .deck { fill: #2a2030; stroke: #4a3d52; stroke-width: .15; }
-.map .balc { fill: none; stroke: #5b4c63; stroke-width: .15; stroke-dasharray: .6 .4; }
-.map .row { stroke: #3b2f42; stroke-width: .35; }
-.map .lbl { fill: var(--muted); font: 500 1.05px var(--f-mono); letter-spacing: .05px; }
-.map .cam { fill: var(--panel); stroke: var(--fg); stroke-width: .2; cursor: pointer; }
-.map .cam.bts { stroke: var(--teal); }
-.map .cam.on { fill: var(--fg); }
-.map .cam.bts.on { fill: var(--teal); }
-.map .cone { fill: rgb(245 185 95 / .28); stroke: none; }
-.map .perf { stroke: #000; stroke-width: .12; }
+/* the paper: re-point the theme variables so the existing controls print in ink */
+.paper {
+  --fg: #1d1418; --muted: #6a5a5f; --line: #d9cbb6; --raise: #efe4d1; --panel: #f7f0e3; --bg: #f7f0e3;
+  --amber: #a8561a; --amber-ink: #fff7ec; --teal: #11786c; --teal-ink: #effffc;
+  color-scheme: light; color: var(--fg);
+  background: linear-gradient(180deg, #fbf6ec, #f3eadb); border-radius: 4px 14px 14px 4px;
+  box-shadow: inset 6px 0 10px -6px rgb(0 0 0 / .35), 0 10px 30px rgb(0 0 0 / .45);
+}
+.pages { position: relative; min-height: 0; perspective: 1400px; }
+.page {
+  position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 14px; transform-origin: left center;
+}
+.page > * { flex: none; }
+/* phones: the whole page scrolls, so the program gets full-size pages under the viewer */
+@media (max-width: 860px) {
+  body { overflow-y: auto; }
+  .app { height: auto; min-height: 100%; grid-template-rows: min(58vh, 520px) auto auto; }
+  .side { grid-template-rows: auto auto auto auto; }
+  .page { position: relative; inset: auto; overflow: visible; min-height: 420px; }
+  .veil { padding: 14px; align-items: start; overflow-y: auto; }
+  .veil-card { gap: 10px; }
+  .veil h1 { font-size: 40px; }
+  .veil ul { display: none; }
+  .rejoin { top: auto; bottom: 64px; }
+}
+.page.turn-in { animation: turnIn .38s cubic-bezier(.2,.7,.2,1); }
+.page.turn-back { animation: turnBack .38s cubic-bezier(.2,.7,.2,1); }
+@keyframes turnIn { from { transform: rotateY(-28deg); opacity: .2; } }
+@keyframes turnBack { from { transform: rotateY(18deg) translateX(10px); opacity: .2; } }
+.folio { margin-top: auto; padding-top: 6px; text-align: center; font: 500 10px/1 var(--f-mono); letter-spacing: .12em; color: var(--muted); pointer-events: none; }
+.mast { display: grid; gap: 2px; border-bottom: 2px solid var(--fg); padding-bottom: 8px; }
+.kicker { font: 500 10px/1.2 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--amber); }
+.ptitle { margin: 0; font: 400 calc(26px * var(--ui))/1.05 var(--f-serif); letter-spacing: -.01em; }
+.page h3 { margin: 0 0 6px; font: 500 10px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.page p { margin: 0; }
+.turnbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.turnbar button {
+  border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 999px;
+  min-width: calc(40px * var(--ui)); min-height: calc(36px * var(--ui)); font: 700 calc(15px * var(--ui))/1 var(--f-body);
+}
+.turnbar button:disabled { opacity: .35; cursor: default; }
+.turnbar span { font: 500 11px/1 var(--f-mono); color: var(--muted); letter-spacing: .06em; }
+
+/* overhead seating chart */
+.chart { width: 100%; height: auto; display: block; border-radius: 10px; background: #fffaf1; border: 1px solid var(--line); touch-action: manipulation; }
+.chart .deck { fill: #2a2026; }
+.chart .wing { fill: #1a1418; }
+.chart .apron { fill: #2a2026; }
+.chart .seat { fill: none; stroke: #b9a88f; stroke-width: .09; }
+.chart .seat.balc { stroke: #cfc0a8; stroke-dasharray: .18 .12; }
+.chart .rail { stroke: #8f7c66; stroke-width: .14; stroke-dasharray: .7 .35; }
+.chart .desk { fill: #8f7c66; }
+.chart .lbl { fill: #7a6a62; font: 500 .82px var(--f-mono); letter-spacing: .06px; }
+.chart .lbl.ink { fill: #efe4d1; }
+.chart .rowl { fill: #a8957c; font: 500 .62px var(--f-mono); }
+.chart .cone { fill: rgb(168 86 26 / .2); }
+.chart .perf { stroke: #fff; stroke-width: .1; }
+.chart .camdot { cursor: pointer; outline: none; }
+.chart .camdot .hit { fill: transparent; }
+.chart .camdot .ring { fill: #fffaf1; stroke: #9b1f37; stroke-width: .22; transition: r .15s; }
+.chart .camdot.bts .ring { stroke: var(--teal); }
+.chart .camdot .num { fill: #9b1f37; font: 700 .85px var(--f-body); pointer-events: none; }
+.chart .camdot.bts .num { fill: var(--teal); }
+.chart .camdot.on .ring { fill: #9b1f37; }
+.chart .camdot.bts.on .ring { fill: var(--teal); }
+.chart .camdot.on .num { fill: #fff; }
+.chart .camdot:hover .ring, .chart .camdot:focus-visible .ring { stroke-width: .34; }
+.chart .camdot:focus-visible .ring { stroke: var(--amber); }
+.chart .camdot .halo { fill: none; stroke: var(--amber); stroke-width: .16; stroke-dasharray: .5 .3; opacity: 0; }
+.chart .camdot.pick .halo { opacity: 1; animation: spin 6s linear infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.chart .tag rect { fill: #1d1418; }
+.chart .tag text { fill: #fffaf1; font: 700 .9px var(--f-body); }
+.chart .tag.preview rect { fill: #6a5a5f; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: calc(12px * var(--ui)); color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #9b1f37; vertical-align: -1px; margin-right: 4px; }
+.legend i.b { border-color: var(--teal); }
+.legend i.g { border: 2px dashed var(--amber); }
+.povcard { display: grid; gap: 3px; padding: 12px 14px; border-radius: 10px; background: var(--raise); border-left: 4px solid #9b1f37; min-height: 92px; }
+.povcard.bts { border-left-color: var(--teal); }
+.povcard .eyebrow { font: 500 10px/1.2 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.povcard .name { font: 400 calc(24px * var(--ui))/1.1 var(--f-serif); }
+.povcard .sub { color: var(--muted); font-size: calc(13px * var(--ui)); }
+.povcard .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.povcard .chip { font: 500 10px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; background: var(--fg); color: var(--bg); }
+.povcard .chip.pick { background: var(--amber); color: var(--amber-ink); }
+.povcard .chip.vid { background: var(--teal); color: var(--teal-ink); }
+.povcard.preview { border-left-style: dashed; }
+.guidebtn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--amber); background: transparent; color: var(--amber);
+  border-radius: 999px; padding: 10px 14px; font: 700 calc(14px * var(--ui))/1 var(--f-body); min-height: calc(42px * var(--ui));
+}
+.guidebtn[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); }
+
+/* advertising, printed into the program */
+.adslot { display: grid; gap: 4px; }
+.adslot:empty { display: none; }
+.adslot .adlabel { font: 500 9px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); text-align: center; }
+.adslot ins.adsbygoogle { display: block; min-height: 90px; }
+.adslot.full ins.adsbygoogle { min-height: 250px; }
+.house {
+  display: grid; gap: 6px; text-decoration: none; color: var(--fg); padding: 14px; border-radius: 10px;
+  border: 1.5px solid var(--fg); background: #fffaf1;
+}
+.house:hover { background: #fff; }
+.house .h-brand { font: 500 10px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--amber); }
+.house .h-head { font: 400 calc(21px * var(--ui))/1.1 var(--f-serif); }
+.house .h-body { color: var(--muted); font-size: calc(13px * var(--ui)); }
+.house .h-cta { justify-self: start; font: 700 calc(13px * var(--ui))/1 var(--f-body); border-bottom: 2px solid currentColor; padding-bottom: 2px; }
+.adslot.full .house { min-height: 260px; align-content: center; text-align: center; justify-items: center; padding: 26px 18px; }
+.adslot.full .house .h-head { font-size: calc(30px * var(--ui)); }
+.adslot.full .house .h-cta { justify-self: center; }
+
+/* POV title on the viewer when you pick a seat */
+.povflash {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;
+  padding: 14px 22px; border-radius: 14px; background: rgb(14 10 16 / .74); backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity .3s;
+}
+.povflash.on { opacity: 1; }
+.povflash .e { display: block; font: 500 11px/1.4 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.povflash .n { display: block; font: 400 clamp(26px, 4vw, 40px)/1.1 var(--f-serif); color: var(--fg); }
+.povflash .s { display: block; font-size: 13px; color: var(--muted); }
 
 .settings { display: grid; gap: 12px; }
 .setting { display: grid; gap: 6px; }
@@ -210,7 +313,8 @@ input[type=range] { accent-color: var(--amber); width: 100%; }
 .note { color: var(--muted); font-size: calc(12px * var(--ui)); margin: 0; }
 kbd { font: 500 11px/1 var(--f-mono); border: 1px solid var(--line); border-radius: 4px; padding: 2px 5px; }
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: calc(13px * var(--ui)); color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .guidechip[aria-pressed="true"] .dot { animation: none; } .fade { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .guidechip[aria-pressed="true"] .dot, .chart .camdot.pick .halo { animation: none; } .fade { transition: none; } .page.turn-in, .page.turn-back { animation: none; } }
+.reduce .page.turn-in, .reduce .page.turn-back, .reduce .chart .camdot.pick .halo { animation: none; }
 </style>
 </head>
 <body>
@@ -225,15 +329,16 @@ kbd { font: 500 11px/1 var(--f-mono); border: 1px solid var(--line); border-radi
     <div class="smcall" id="smcall" hidden></div>
     <button class="rejoin" id="rejoin" hidden>Return to guided view</button>
     <div class="captions" id="captions"></div>
+    <div class="povflash" id="povFlash" aria-hidden="true"><span class="e" id="pfE"></span><span class="n" id="pfN"></span><span class="s" id="pfS"></span></div>
     <div class="hint" id="hint">Drag to look around · scroll to zoom</div>
     <div class="veil" id="veil">
       <div class="veil-card">
-        <span class="program">Tonight · Demo performance · 2 min 30 s</span>
+        <span class="bill">Experimental · Tonight · Demo performance · 2 min 30 s</span>
         <h1>Every Seat</h1>
         <p>A five-piece band plays “Every Angle” in a virtual theatre. Watch the director’s guided cut, or pick your own seat and look anywhere in 360°.</p>
         <ul>
           <li>Headphones give you true binaural sound that turns as you look.</li>
-          <li>Four audience seats, plus two backstage cameras.</li>
+          <li>Pick a seat from the overhead seating chart in your program: four audience seats and two backstage cameras.</li>
           <li>Captions, audio description and a hands-free mode are in Settings.</li>
         </ul>
         <div class="row">
@@ -257,62 +362,100 @@ kbd { font: 500 11px/1 var(--f-mono); border: 1px solid var(--line); border-radi
     <div class="chapters" id="chapters" aria-label="Chapters"></div>
   </footer>
 
-  <aside class="side">
-    <div>
-      <h2><span>Your seat</span><span>1–4</span></h2>
-      <div class="povs" id="povMain"></div>
-    </div>
-    <div>
-      <h2><span class="bts-label">Behind the scenes</span><span>5–6</span></h2>
-      <div class="povs" id="povBts"></div>
-    </div>
-    <div>
-      <h2><span>House map</span><span>tap a camera</span></h2>
-      <svg class="map" id="map" viewBox="-14 -12.5 28 36" role="img" aria-label="Top-down map of the theatre with camera positions"></svg>
-    </div>
-    <div>
-      <h2><span>Settings</span></h2>
-      <div class="settings">
-        <fieldset class="setting">
-          <legend>Sound</legend>
-          <div class="seg" id="mixSeg">
-            <button id="mixBinaural" aria-pressed="true">Binaural 3D</button>
-            <button id="mixBoard" aria-pressed="false">Board mix</button>
-          </div>
-          <small>Binaural places each player around you. Use headphones. Board mix is the plain stereo feed from the sound desk.</small>
-        </fieldset>
-        <label class="setting"><span>Vocal clarity</span><input type="range" id="vocal" min="0" max="12" step="1" value="0"><small>Lifts the singer above the band, up to +12 dB.</small></label>
-        <label class="setting"><span>Crowd noise</span><input type="range" id="crowd" min="0" max="100" step="1" value="60"></label>
-        <label class="switch"><span><strong>Captions</strong><small>Lyrics and sound cues</small></span><input type="checkbox" id="optCaptions" checked></label>
-        <fieldset class="setting">
-          <legend>Caption size</legend>
-          <div class="seg" id="capSeg">
-            <button data-size="1rem" aria-pressed="false">Small</button>
-            <button data-size="1.25rem" aria-pressed="true">Medium</button>
-            <button data-size="1.75rem" aria-pressed="false">Large</button>
-          </div>
-        </fieldset>
-        <label class="switch"><span><strong>Audio description</strong><small>A voice describes what happens on stage</small></span><input type="checkbox" id="optAD"></label>
-        <label class="switch"><span><strong>Hands-free</strong><small>Guided view, large captions, controls hide when idle</small></span><input type="checkbox" id="optHands"></label>
-        <label class="switch"><span><strong>Reduce motion</strong><small>Guided view cuts instead of panning</small></span><input type="checkbox" id="optMotion"></label>
-        <label class="switch"><span><strong>Large controls</strong></span><input type="checkbox" id="optLarge"></label>
+  <aside class="side" aria-label="Program">
+    <div class="sidetop"><div data-tyl-nav></div><span class="exp-badge" title="This tool is in the site's Experimental section">Experimental</span></div>
+    <nav class="pgtabs" id="pgTabs" aria-label="Program pages">
+      <button data-go="seats">Seats</button><button data-go="sound">Sound</button><button data-go="access">Access</button><button data-go="notes">Notes</button>
+    </nav>
+    <div class="pages paper" id="pages">
+
+      <article class="page" data-page="seats" aria-label="Seating chart">
+        <header class="mast"><span class="kicker">Program · Seating chart</span><h2 class="ptitle">Choose where you sit</h2></header>
+        <svg class="chart" id="chart" viewBox="-14 -12.5 28 35.5" role="group" aria-label="Overhead seating chart. Each dot is a camera. Select one to watch from there."></svg>
+        <div class="legend"><span><i></i>Audience seat</span><span><i class="b"></i>Backstage</span><span><i class="g"></i>Director’s pick now</span></div>
+        <div class="povcard" id="povCard" aria-live="polite"></div>
+        <button class="guidebtn" id="guideBtn" aria-pressed="true">Follow the director’s cut</button>
+        <div class="adslot" data-ad="foot"></div>
+        <footer class="folio">— 1 —</footer>
+      </article>
+
+      <article class="page" data-page="ad1" aria-label="Advertisement" hidden>
+        <div class="adslot full" data-ad="page"></div>
+        <footer class="folio">— 2 —</footer>
+      </article>
+
+      <article class="page" data-page="sound" aria-label="Sound" hidden>
+        <header class="mast"><span class="kicker">Program · Sound</span><h2 class="ptitle">How it sounds</h2></header>
+        <div class="settings">
+          <fieldset class="setting">
+            <legend>Mix</legend>
+            <div class="seg" id="mixSeg">
+              <button id="mixBinaural" aria-pressed="true">Binaural 3D</button>
+              <button id="mixBoard" aria-pressed="false">Board mix</button>
+            </div>
+            <small>Binaural places each player around you. Use headphones. Board mix is the plain stereo feed from the sound desk.</small>
+          </fieldset>
+          <label class="setting"><span>Vocal clarity</span><input type="range" id="vocal" min="0" max="12" step="1" value="0"><small>Lifts the singer above the band, up to +12 dB.</small></label>
+          <label class="setting"><span>Crowd noise</span><input type="range" id="crowd" min="0" max="100" step="1" value="60"></label>
+        </div>
+        <div class="adslot" data-ad="foot"></div>
+        <footer class="folio">— 3 —</footer>
+      </article>
+
+      <article class="page" data-page="access" aria-label="Access" hidden>
+        <header class="mast"><span class="kicker">Program · Access</span><h2 class="ptitle">Make it yours</h2></header>
+        <div class="settings">
+          <label class="switch"><span><strong>Captions</strong><small>Lyrics and sound cues</small></span><input type="checkbox" id="optCaptions" checked></label>
+          <fieldset class="setting">
+            <legend>Caption size</legend>
+            <div class="seg" id="capSeg">
+              <button data-size="1rem" aria-pressed="false">Small</button>
+              <button data-size="1.25rem" aria-pressed="true">Medium</button>
+              <button data-size="1.75rem" aria-pressed="false">Large</button>
+            </div>
+          </fieldset>
+          <label class="switch"><span><strong>Audio description</strong><small>A voice describes what happens on stage</small></span><input type="checkbox" id="optAD"></label>
+          <label class="switch"><span><strong>Hands-free</strong><small>Guided view, large captions, controls hide when idle</small></span><input type="checkbox" id="optHands"></label>
+          <label class="switch"><span><strong>Reduce motion</strong><small>Guided view cuts instead of panning</small></span><input type="checkbox" id="optMotion"></label>
+          <label class="switch"><span><strong>Large controls</strong></span><input type="checkbox" id="optLarge"></label>
+        </div>
+        <div class="adslot" data-ad="foot"></div>
+        <footer class="folio">— 4 —</footer>
+      </article>
+
+      <article class="page" data-page="ad2" aria-label="Advertisement" hidden>
+        <div class="adslot full" data-ad="page"></div>
+        <footer class="folio">— 5 —</footer>
+      </article>
+
+      <article class="page" data-page="notes" aria-label="Notes" hidden>
+        <header class="mast"><span class="kicker">Program · Notes</span><h2 class="ptitle">About tonight</h2></header>
+        <p>Every Seat is an experimental tool on Toolkit Your Life. A five-piece band plays “Every Angle” in a virtual theatre, standing in for real 360° camera feeds. It’s built for people who can’t easily get to a venue.</p>
         <div class="setting">
-          <span>Your own 360 footage</span>
+          <h3>Your own 360 footage</h3>
           <label class="filebtn">Load an equirectangular video for the current camera<input type="file" id="file" accept="video/*"></label>
           <p class="note">The clip replaces the virtual theatre for that camera and plays its own audio, synced to the show clock.</p>
         </div>
-      </div>
+        <div>
+          <h3>Keyboard</h3>
+          <div class="keys">
+            <kbd>Space</kbd><span>Play / pause</span>
+            <kbd>← ↑ → ↓</kbd><span>Look around</span>
+            <kbd>1–6</kbd><span>Change seat</span>
+            <kbd>G</kbd><span>Guided view on / off</span>
+            <kbd>C</kbd><span>Captions</span>
+            <kbd>+ −</kbd><span>Zoom</span>
+            <kbd>[ ]</kbd><span>Turn program pages</span>
+          </div>
+        </div>
+        <div class="adslot" data-ad="foot"></div>
+        <footer class="folio">— 6 —</footer>
+      </article>
     </div>
-    <div>
-      <h2><span>Keyboard</span></h2>
-      <div class="keys">
-        <kbd>Space</kbd><span>Play / pause</span>
-        <kbd>← ↑ → ↓</kbd><span>Look around</span>
-        <kbd>1–6</kbd><span>Change camera</span>
-        <kbd>G</kbd><span>Guided view on / off</span>
-        <kbd>C</kbd><span>Captions</span>
-        <kbd>+ −</kbd><span>Zoom</span>
-      </div>
+    <div class="turnbar">
+      <button id="pgPrev" aria-label="Previous page">‹</button>
+      <span id="pgNum">Page 1 of 6</span>
+      <button id="pgNext" aria-label="Next page">›</button>
     </div>
   </aside>
 </div>
@@ -963,36 +1106,26 @@ addEventListener('keydown', e => {
   else if (k.toLowerCase() === 'g') setGuided(!S.guided);
   else if (k.toLowerCase() === 'c') { $('optCaptions').checked = !$('optCaptions').checked; $('optCaptions').dispatchEvent(new Event('change')); }
   else if (/^[1-6]$/.test(k)) pickCam(CAMS[+k - 1].id);
+  else if (k === '[') goPage(pageIdx - 1);
+  else if (k === ']') goPage(pageIdx + 1);
 });
 
-function pickCam(id) { setGuided(false); cutTo(id); }
+function pickCam(id) { setGuided(false); cutTo(id); if (!xrOn()) flashPov(id); }
 
 /* =========================================================
    UI
    ========================================================= */
-function renderPovs() {
-  for (const [el, list] of [[$('povMain'), CAMS.filter(c => !c.bts)], [$('povBts'), CAMS.filter(c => c.bts)]]) {
-    el.innerHTML = '';
-    for (const c of list) {
-      const b = document.createElement('button');
-      b.className = 'pov' + (c.bts ? ' bts' : ''); b.dataset.cam = c.id;
-      b.innerHTML = `<span class="key">${c.key}</span><span class="t"><strong>${c.name}</strong><small>${c.sub}${videos[c.id] ? ' · <span class="vid">your video</span>' : ''}</small></span><span class="flag">Guided</span>`;
-      b.addEventListener('click', () => pickCam(c.id));
-      el.appendChild(b);
-    }
-  }
-  renderCamUI();
-}
+function renderPovs() { renderChartState(); renderPovCard(); }   // kept for the video loader
+function camWho(c) { return `Cam ${c.key} · ${c.bts ? 'Backstage' : 'Audience seat'}`; }
 function renderCamUI() {
-  const c = camById[S.cam], gcam = cueAt(showTime()).cam;
-  document.querySelectorAll('.pov').forEach(b => {
-    b.setAttribute('aria-pressed', String(b.dataset.cam === S.cam));
-    b.classList.toggle('guided-pick', b.dataset.cam === gcam);
-  });
+  const c = camById[S.cam];
   $('camName').textContent = c.name;
   $('camEyebrow').textContent = `Cam ${c.key} · ${c.bts ? 'Behind the scenes' : 'Audience'}`;
   $('camtag').classList.toggle('bts', !!c.bts);
-  document.querySelectorAll('.map .cam').forEach(n => n.classList.toggle('on', n.dataset.cam === S.cam));
+  $('guideBtn').setAttribute('aria-pressed', String(S.guided));
+  $('guideBtn').textContent = S.guided ? 'Following the director’s cut' : 'Follow the director’s cut';
+  renderChartState(); renderPovCard();
+  xrUI.dirty = true;
 }
 function renderChapters() {
   const el = $('chapters');
@@ -1002,27 +1135,87 @@ function renderChapters() {
     el.appendChild(b);
   }
 }
+
+/* ---------- overhead seating chart ---------- */
 const SVGNS = 'http://www.w3.org/2000/svg';
 const mk = (tag, attrs, parent) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent && parent.appendChild(n); return n; };
-let mapCone, mapPerf = {};
+const ROWS = 'ABCDEFGHJKLMN';                     // no row I, as in most theatres
+const nearDesk = (x, z) => x > 2.4 && x < 5.6 && z > 10.6 && z < 13.6;
+let mapCone, mapPerf = {}, chartTag, preview = null;
 function renderMap() {
-  const svg = $('map');
-  mk('rect', { x: -14, y: -12.5, width: 28, height: 36, class: 'floor' }, svg);
-  mk('rect', { x: -13, y: -12, width: 26, height: 11, class: 'deck' }, svg);
-  for (let z = 2; z <= 14; z++) { mk('line', { x1: -9.3, x2: -0.8, y1: z, y2: z, class: 'row' }, svg); mk('line', { x1: 0.8, x2: z > 10.8 && z < 14.2 ? 2.4 : 9.3, y1: z, y2: z, class: 'row' }, svg); if (z > 10.8 && z < 14.2) mk('line', { x1: 5.8, x2: 9.3, y1: z, y2: z, class: 'row' }, svg); }
-  mk('rect', { x: -13, y: 15, width: 26, height: 7.5, class: 'balc' }, svg);
-  mk('rect', { x: 2.8, y: 11.4, width: 2.4, height: 1, fill: '#2b2b33' }, svg);
-  const lbl = (x, y, t, anchor = 'middle') => { const n = mk('text', { x, y, class: 'lbl', 'text-anchor': anchor }, svg); n.textContent = t; };
-  lbl(0, -10.6, 'STAGE'); lbl(-12.6, 22, 'BALCONY ABOVE', 'start'); lbl(-12.6, 0.6, 'WINGS', 'start'); lbl(4, 14.6, 'MIX');
+  const svg = $('chart');
+  // stage, wings and apron
+  mk('rect', { x: -13.6, y: -12.2, width: 27.2, height: 11.2, rx: .3, class: 'wing' }, svg);
+  mk('rect', { x: -9.6, y: -12.2, width: 19.2, height: 11.2, class: 'deck' }, svg);
+  mk('path', { d: 'M-9.6,-1 Q0,1.1 9.6,-1 Z', class: 'apron' }, svg);
+  const lbl = (x, y, t, cls = 'lbl', anchor = 'middle') => { const n = mk('text', { x, y, class: cls, 'text-anchor': anchor }, svg); n.textContent = t; return n; };
+  lbl(0, -10.9, 'STAGE', 'lbl ink'); lbl(-11.6, -10.9, 'WINGS', 'lbl ink'); lbl(11.6, -10.9, 'WINGS', 'lbl ink');
+  // orchestra seats, two banks either side of the centre aisle
+  ROWS.split('').forEach((r, i) => {
+    const z = 2 + i;
+    for (let k = 0; k < 11; k++) for (const side of [-1, 1]) {
+      const x = side * (1.25 + k * 0.78);
+      if (side > 0 && nearDesk(x, z)) continue;
+      mk('rect', { x: x - .27, y: z - .24, width: .54, height: .48, rx: .12, class: 'seat' }, svg);
+    }
+    lbl(-10.3, z + .22, r, 'rowl'); lbl(10.3, z + .22, r, 'rowl');
+  });
+  mk('rect', { x: 2.9, y: 11.4, width: 2.2, height: 1, rx: .15, class: 'desk' }, svg);
+  lbl(4, 14.75, 'MIX DESK');
+  // balcony (upper level) drawn as the overhang behind the stalls
+  mk('line', { x1: -12.8, x2: 12.8, y1: 15.7, y2: 15.7, class: 'rail' }, svg);
+  for (let i = 0; i < 5; i++) { const z = 17 + i * 1.05; for (let k = 0; k < 15; k++) for (const side of [-1, 1]) { const x = side * (1.25 + k * 0.78); mk('rect', { x: x - .27, y: z - .24, width: .54, height: .48, rx: .12, class: 'seat balc' }, svg); } }
+  lbl(0, 22.6, 'BALCONY · UPPER LEVEL');
   mapCone = mk('path', { class: 'cone' }, svg);
-  for (const p of PERFORMERS) mapPerf[p.id] = mk('circle', { r: 0.55, class: 'perf', fill: '#' + p.color.toString(16).padStart(6, '0') }, svg);
+  for (const p of PERFORMERS) mapPerf[p.id] = mk('circle', { r: 0.5, class: 'perf', fill: '#' + p.color.toString(16).padStart(6, '0') }, svg);
+  // camera dots
   for (const c of CAMS) {
-    const g = mk('g', { tabindex: 0, role: 'button', 'aria-label': `Switch to ${c.name}` }, svg);
-    mk('circle', { cx: c.pos[0], cy: c.pos[2], r: 0.85, class: 'cam' + (c.bts ? ' bts' : ''), 'data-cam': c.id }, g);
-    const n = mk('text', { x: c.pos[0], y: c.pos[2] + 0.38, class: 'lbl', 'text-anchor': 'middle', style: 'pointer-events:none;font-weight:700' }, g); n.textContent = c.key;
-    g.addEventListener('click', () => pickCam(c.id));
+    const g = mk('g', { class: 'camdot' + (c.bts ? ' bts' : ''), tabindex: 0, role: 'button', 'data-cam': c.id, 'aria-label': `${c.name}, ${camWho(c)}, ${c.sub}` }, svg);
+    mk('circle', { cx: c.pos[0], cy: c.pos[2], r: 1.7, class: 'hit' }, g);               // bigger touch target
+    mk('circle', { cx: c.pos[0], cy: c.pos[2], r: 1.45, class: 'halo' }, g);
+    mk('circle', { cx: c.pos[0], cy: c.pos[2], r: 0.95, class: 'ring' }, g);
+    const n = mk('text', { x: c.pos[0], y: c.pos[2] + 0.31, class: 'num', 'text-anchor': 'middle' }, g); n.textContent = c.key;
+    g.addEventListener('click', () => { pickCam(c.id); preview = null; });
     g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); pickCam(c.id); } });
+    const show = () => { if (preview !== c.id) { preview = c.id; renderChartState(); renderPovCard(); } };
+    const hide = () => { if (preview === c.id) { preview = null; renderChartState(); renderPovCard(); } };
+    g.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') show(); });
+    g.addEventListener('pointerleave', hide);
+    g.addEventListener('focus', show); g.addEventListener('blur', hide);
   }
+  chartTag = mk('g', { class: 'tag', 'pointer-events': 'none' }, svg);
+  mk('rect', { rx: .45, height: 1.5 }, chartTag); mk('text', {}, chartTag);
+  renderChartState();
+}
+function renderChartState() {
+  if (!chartTag) return;
+  const gcam = S.guided ? cueAt(showTime()).cam : null;
+  document.querySelectorAll('.chart .camdot').forEach(n => {
+    const id = n.dataset.cam;
+    n.classList.toggle('on', id === S.cam); n.classList.toggle('pick', id === gcam);
+    n.setAttribute('aria-pressed', String(id === S.cam));
+  });
+  // the POV title printed beside the chosen (or hovered) dot
+  const c = camById[preview || S.cam], [x, , z] = c.pos;
+  const txt = chartTag.querySelector('text'), rect = chartTag.querySelector('rect');
+  txt.textContent = c.name;
+  const w = c.name.length * 0.5 + 1.2, right = x + 1.4 + w < 13.6;
+  const tx = right ? x + 1.4 : x - 1.4 - w, ty = z - 0.75;
+  rect.setAttribute('x', tx); rect.setAttribute('y', ty); rect.setAttribute('width', w);
+  txt.setAttribute('x', tx + 0.6); txt.setAttribute('y', ty + 1.06);
+  chartTag.classList.toggle('preview', !!preview && preview !== S.cam);
+}
+function renderPovCard() {
+  const id = preview || S.cam, c = camById[id], isPreview = id !== S.cam;
+  const gcam = cueAt(showTime()).cam;
+  const chips = [
+    isPreview ? '<span class="chip">Preview · tap to sit here</span>' : '<span class="chip">Now watching</span>',
+    S.guided && id === gcam ? '<span class="chip pick">Director’s pick</span>' : '',
+    videos[id] ? '<span class="chip vid">Your video</span>' : '',
+  ].join('');
+  const el = $('povCard');
+  el.className = 'povcard' + (c.bts ? ' bts' : '') + (isPreview ? ' preview' : '');
+  el.innerHTML = `<span class="eyebrow">${camWho(c)}</span><span class="name">${c.name}</span><span class="sub">${c.sub}</span><span class="chips">${chips}</span>`;
 }
 function updateMap(t) {
   const c = camById[S.cam], [x, , z] = c.pos, r = 9, half = THREE.MathUtils.degToRad(S.fov * camera.aspect) / 2;
@@ -1031,7 +1224,90 @@ function updateMap(t) {
   for (const p of PERFORMERS) { const [px, pz] = performerXZ(p.id, t); mapPerf[p.id].setAttribute('cx', px); mapPerf[p.id].setAttribute('cy', pz); }
 }
 
-let lastCapKey = '', lastSec = '', lastAdT = 0;
+/* POV title across the viewer when someone picks a seat */
+let flashT = 0;
+function flashPov(id) {
+  const c = camById[id];
+  $('pfE').textContent = camWho(c); $('pfN').textContent = c.name; $('pfS').textContent = c.sub;
+  $('povFlash').classList.add('on'); clearTimeout(flashT);
+  flashT = setTimeout(() => $('povFlash').classList.remove('on'), 1700);
+}
+
+/* ---------- the program: page turning ---------- */
+const PAGES = [...document.querySelectorAll('.page')];
+let pageIdx = 0;
+function goPage(i, { focus = false } = {}) {
+  i = clamp(i, 0, PAGES.length - 1); if (i === pageIdx && !PAGES[i].hidden) return;
+  const back = i < pageIdx;
+  PAGES.forEach((pg, k) => { pg.hidden = k !== i; pg.classList.remove('turn-in', 'turn-back'); });
+  const pg = PAGES[i]; void pg.offsetWidth; pg.classList.add(back ? 'turn-back' : 'turn-in'); pg.scrollTop = 0;
+  pageIdx = i;
+  $('pgNum').textContent = `Page ${i + 1} of ${PAGES.length}`;
+  $('pgPrev').disabled = i === 0; $('pgNext').disabled = i === PAGES.length - 1;
+  const name = pg.dataset.page;
+  document.querySelectorAll('#pgTabs button').forEach(b => {
+    const on = b.dataset.go === name; b.toggleAttribute('aria-current', on); if (on) b.setAttribute('aria-current', 'page');
+  });
+  if (focus) pg.focus({ preventScroll: true });
+}
+PAGES.forEach(pg => pg.tabIndex = -1);
+document.querySelectorAll('#pgTabs button').forEach(b => b.addEventListener('click', () => goPage(PAGES.findIndex(p => p.dataset.page === b.dataset.go))));
+$('pgPrev').addEventListener('click', () => goPage(pageIdx - 1));
+$('pgNext').addEventListener('click', () => goPage(pageIdx + 1));
+$('guideBtn').addEventListener('click', () => setGuided(!S.guided));
+// swipe the page to turn it (phones)
+let swipe0 = null;
+$('pages').addEventListener('pointerdown', e => { if (!e.target.closest('input, button, .chart')) swipe0 = { x: e.clientX, y: e.clientY }; });
+$('pages').addEventListener('pointerup', e => {
+  if (!swipe0) return; const dx = e.clientX - swipe0.x, dy = e.clientY - swipe0.y; swipe0 = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) goPage(pageIdx + (dx < 0 ? 1 : -1));
+});
+
+/* ---------- advertising in the program ----------
+   Real ads go in two kinds of slot: a strip at the foot of each content page, and full-page ads
+   between pages, like a printed theatre program.
+   - On toolkityourlife.com, slots show Google AdSense display units (the AdSense script and consent
+     come from /tyl-privacy.js). Paste the ad-unit IDs from AdSense → Ads → By ad unit into UNITS.
+   - Any slot AdSense leaves empty, and everything inside the headset (WebXR can't show AdSense),
+     shows a direct sponsor from SPONSORS. Sell a placement by adding it to the top of that list. */
+const PROGRAM_ADS = {
+  client: 'ca-pub-4067098602453961',
+  UNITS: { foot: '', page: '' },          // e.g. foot: '1234567890'
+  SPONSORS: [
+    { brand: 'Toolkit Your Life', head: 'Sleep, nap, then wake up ready', body: 'RiseWave plays binaural tones and soundscapes to help you drift off and rise on time. Free.', cta: 'Try RiseWave', href: '/RiseWave/' },
+    { brand: 'Toolkit Your Life', head: 'Mix the exact colour you see', body: 'Pigment Lens turns a photo into a paint recipe for acrylic, oil, watercolour and more.', cta: 'Open Pigment Lens', href: '/PigmentLens/' },
+    { brand: 'Toolkit Your Life', head: 'Plan the group trip in one place', body: 'Find dates that work for everyone, compare flights, and build the itinerary together.', cta: 'Start planning', href: '/GroupTravelScheduler/' },
+    { brand: 'Advertise here', head: 'Your name in the program', body: 'Sponsor a page of Every Seat and reach viewers in browsers and VR headsets.', cta: 'support@toolkityourlife.com', href: 'mailto:support@toolkityourlife.com?subject=Every%20Seat%20program%20ad' },
+  ],
+};
+const onSite = /(^|\.)toolkityourlife\.com$/i.test(location.hostname);
+let sponsorN = 0;
+const nextSponsor = () => PROGRAM_ADS.SPONSORS[sponsorN++ % PROGRAM_ADS.SPONSORS.length];
+function houseAd(slot) {
+  const a = nextSponsor(), el = document.createElement('a');
+  el.className = 'house'; el.href = a.href; el.dataset.sponsor = a.head;
+  if (/^https?:/.test(a.href) && !a.href.includes(location.host)) { el.target = '_blank'; el.rel = 'sponsored noopener'; }
+  el.innerHTML = `<span class="h-brand"></span><span class="h-head"></span><span class="h-body"></span><span class="h-cta"></span>`;
+  el.querySelector('.h-brand').textContent = a.brand; el.querySelector('.h-head').textContent = a.head;
+  el.querySelector('.h-body').textContent = a.body; el.querySelector('.h-cta').textContent = a.cta;
+  slot.querySelector('ins')?.remove(); slot.appendChild(el);
+}
+function fillAds() {
+  document.querySelectorAll('.adslot').forEach(slot => {
+    slot.innerHTML = '<span class="adlabel">Advertisement</span>';
+    const unit = PROGRAM_ADS.UNITS[slot.dataset.ad];
+    if (!onSite || !unit) { houseAd(slot); return; }
+    const ins = document.createElement('ins');
+    ins.className = 'adsbygoogle'; ins.style.display = 'block';
+    Object.assign(ins.dataset, { adClient: PROGRAM_ADS.client, adSlot: unit, adFormat: slot.dataset.ad === 'page' ? 'rectangle' : 'horizontal', fullWidthResponsive: 'true' });
+    slot.appendChild(ins);
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch {}
+    // AdSense marks a slot it can't fill; show a sponsor instead of a blank page
+    setTimeout(() => { if (ins.dataset.adStatus !== 'filled' && !ins.querySelector('iframe')) houseAd(slot); }, 6000);
+  });
+}
+
+let lastCapKey = '', lastSec = '', lastAdT = 0, lastPick = '';
 function updateOverlays(t) {
   // captions
   let key = '';
@@ -1062,6 +1338,8 @@ function updateOverlays(t) {
     const nb = document.querySelector('.chapters button.now'); nb && nb.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     lastSec = sec.id; renderCamUI();
   }
+  if (S.guided && cueAt(t).cam !== lastPick) { lastPick = cueAt(t).cam; renderChartState(); renderPovCard();
+  }
   $('tcNow').textContent = fmt(t);
   if (!scrubbing) $('scrub').value = t;
   // audio description (speech synthesis)
@@ -1085,7 +1363,8 @@ $('crowd').addEventListener('input', e => { S.crowd = +e.target.value / 100; upd
 $('optCaptions').addEventListener('change', e => { S.captions = e.target.checked; });
 $('optAD').addEventListener('change', e => { S.ad = e.target.checked; if (!S.ad) try { speechSynthesis.cancel(); } catch {} });
 $('optMotion').checked = S.reduceMotion;
-$('optMotion').addEventListener('change', e => { S.reduceMotion = e.target.checked; });
+$('optMotion').addEventListener('change', e => { S.reduceMotion = e.target.checked; document.documentElement.classList.toggle('reduce', S.reduceMotion); });
+document.documentElement.classList.toggle('reduce', !!S.reduceMotion);
 $('optLarge').addEventListener('change', e => { document.documentElement.style.setProperty('--ui', e.target.checked ? 1.2 : 1); resize(); });
 $('optHands').addEventListener('change', e => {
   S.hands = e.target.checked;
@@ -1116,43 +1395,91 @@ function canvasPlane(w, h, pxW, pxH) {
   mesh.renderOrder = 10; mesh.visible = false;
   return { cv, g: cv.getContext('2d'), tex, mesh };
 }
-const menu = canvasPlane(0.9, 0.45, 1200, 600);
+const menu = canvasPlane(1.0, 0.5, 1200, 600);
 const caps = canvasPlane(1.9, 0.32, 1520, 256);
 rig.add(menu.mesh, caps.mesh);
 // fade sphere for cuts inside the headset
 const fadeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, side: THREE.BackSide, depthTest: false, fog: false }));
 fadeMesh.renderOrder = 20; camera.add(fadeMesh);
 
-// menu layout in canvas pixels
+// The headset menu is an open theatre program, 1200×600 canvas px:
+// left page = overhead seating chart with camera dots; right page = controls and a sponsor ad.
+const VR_CH = { s: 12.4, ox: 300, oy: 128 };   // venue metres → px (x centred on the left page, z from the stage back)
+const vrXY = c => [VR_CH.ox + c.pos[0] * VR_CH.s, VR_CH.oy + (c.pos[2] + 12.5) * VR_CH.s];
 const MENU_BTNS = [
-  ...CAMS.filter(c => !c.bts).map((c, i) => ({ id: 'cam:' + c.id, x: 30 + i * 288, y: 150, w: 270, h: 150, label: c.name, sub: 'Cam ' + c.key, cam: c })),
-  ...CAMS.filter(c => c.bts).map((c, i) => ({ id: 'cam:' + c.id, x: 30 + i * 288, y: 330, w: 270, h: 150, label: c.name.replace('Stage-Left ', ''), sub: 'Backstage', cam: c })),
-  { id: 'guided', x: 606, y: 330, w: 270, h: 150 },
-  { id: 'play', x: 894, y: 330, w: 270, h: 150 },
+  ...CAMS.map(c => { const [cx, cy] = vrXY(c); return { id: 'cam:' + c.id, cx, cy, r: 30, cam: c }; }),
+  { id: 'guided', x: 640, y: 150, w: 520, h: 104 },
+  { id: 'play',   x: 640, y: 270, w: 520, h: 96 },
 ];
+const VR_AD = { x: 640, y: 392, w: 520, h: 176 };
+let vrSponsor = null, vrSponsorT = 0;
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
-function drawMenu(t) {
-  const g = menu.g, W = 1200, H = 600;
-  g.clearRect(0, 0, W, H);
-  g.fillStyle = 'rgba(23,17,26,0.92)'; rrect(g, 0, 0, W, H, 36); g.fill();
-  g.fillStyle = '#f4ede7'; g.font = '700 54px "Bricolage Grotesque", system-ui, sans-serif'; g.textBaseline = 'alphabetic';
-  g.fillText('Every Seat', 30, 80);
-  g.fillStyle = '#aa9eaa'; g.font = '500 30px "JetBrains Mono", monospace';
-  g.fillText(`${fmt(t)} / ${fmt(END)} · ${sectionAt(t).name}`, 330, 78);
-  g.fillText('Point and pinch, or pull the trigger', 30, 128);
-  const hov = new Set(xrUI.hover);
-  for (const b of MENU_BTNS) {
-    let on = false, label = b.label, sub = b.sub, accent = '#f4ede7';
-    if (b.cam) { on = S.cam === b.cam.id; if (b.cam.bts) accent = '#72d6c9'; }
-    if (b.id === 'guided') { on = S.guided; label = S.guided ? 'Guided: on' : 'Guided: off'; sub = S.guided ? 'Director’s cut' : 'You choose'; accent = '#f5b95f'; }
-    if (b.id === 'play') { label = S.playing ? 'Pause' : 'Play'; sub = 'Show'; }
-    g.fillStyle = on ? accent : hov.has(b.id) ? '#3a2e40' : '#221a26'; rrect(g, b.x, b.y, b.w, b.h, 22); g.fill();
-    g.lineWidth = 3; g.strokeStyle = hov.has(b.id) ? accent : '#33293a'; g.stroke();
-    g.fillStyle = on ? '#120d14' : accent === '#f4ede7' ? '#aa9eaa' : accent; g.font = '500 26px "JetBrains Mono", monospace';
-    g.fillText(sub.toUpperCase(), b.x + 22, b.y + 48);
-    g.fillStyle = on ? '#120d14' : '#f4ede7'; g.font = '700 38px "Atkinson Hyperlegible", system-ui, sans-serif';
-    g.fillText(label, b.x + 22, b.y + 110, b.w - 40);
+const SERIF = '"Fraunces", Georgia, serif', SANS = '"Atkinson Hyperlegible", system-ui, sans-serif', MONO = '"JetBrains Mono", monospace';
+function wrapText(g, txt, x, y, maxW, lh, maxLines) {
+  const words = txt.split(' '); let line = '', n = 0;
+  for (const w of words) {
+    const t = line ? line + ' ' + w : w;
+    if (g.measureText(t).width > maxW && line) { g.fillText(line, x, y + n * lh); line = w; if (++n >= maxLines) return; }
+    else line = t;
   }
+  g.fillText(line, x, y + n * lh);
+}
+function drawMenu(t) {
+  const g = menu.g, W = 1200, H = 600, hov = new Set(xrUI.hover);
+  g.clearRect(0, 0, W, H); g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+  // paper
+  g.fillStyle = '#f7f0e3'; rrect(g, 0, 0, W, H, 18); g.fill();
+  const spine = g.createLinearGradient(570, 0, 630, 0);
+  spine.addColorStop(0, 'rgba(0,0,0,0)'); spine.addColorStop(.5, 'rgba(0,0,0,.22)'); spine.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = spine; g.fillRect(570, 0, 60, H);
+  // left page: masthead + chart
+  g.fillStyle = '#a8561a'; g.font = `500 20px ${MONO}`; g.fillText('PROGRAM · SEATING CHART', 34, 44);
+  const c = camById[S.cam];
+  g.fillStyle = '#1d1418'; g.font = `400 40px ${SERIF}`; g.fillText(c.name, 34, 92, 520);
+  const X = x => VR_CH.ox + x * VR_CH.s, Y = z => VR_CH.oy + (z + 12.5) * VR_CH.s;
+  g.fillStyle = '#1a1418'; g.fillRect(X(-13.6), Y(-12.2), 27.2 * VR_CH.s, 11.2 * VR_CH.s);
+  g.fillStyle = '#2a2026'; g.fillRect(X(-9.6), Y(-12.2), 19.2 * VR_CH.s, 11.2 * VR_CH.s);
+  g.fillStyle = '#efe4d1'; g.font = `500 14px ${MONO}`; g.textAlign = 'center'; g.fillText('STAGE', X(0), Y(-10.6));
+  g.strokeStyle = '#c9b89f'; g.lineWidth = 1.5;
+  for (let i = 0; i < 13; i++) { const z = 2 + i; g.beginPath(); g.moveTo(X(-9.3), Y(z)); g.lineTo(X(-1), Y(z)); g.moveTo(X(1), Y(z)); g.lineTo(X(nearDesk(3, z) ? 2.4 : 9.3), Y(z)); if (nearDesk(3, z)) { g.moveTo(X(5.6), Y(z)); g.lineTo(X(9.3), Y(z)); } g.stroke(); }
+  g.setLineDash([8, 6]); g.beginPath(); g.moveTo(X(-12.8), Y(15.7)); g.lineTo(X(12.8), Y(15.7)); g.stroke(); g.setLineDash([]);
+  for (let i = 0; i < 5; i++) { const z = 17 + i * 1.05; g.beginPath(); g.moveTo(X(-12), Y(z)); g.lineTo(X(-1), Y(z)); g.moveTo(X(1), Y(z)); g.lineTo(X(12), Y(z)); g.stroke(); }
+  g.fillStyle = '#7a6a62'; g.font = `500 13px ${MONO}`; g.fillText('BALCONY · UPPER LEVEL', X(0), Y(22.4));
+  for (const p of PERFORMERS) { const [px, pz] = performerXZ(p.id, t); g.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); g.beginPath(); g.arc(X(px), Y(pz), 7, 0, 7); g.fill(); }
+  const gcam = S.guided ? cueAt(t).cam : null;
+  for (const b of MENU_BTNS.filter(b => b.cam)) {
+    const on = S.cam === b.cam.id, ink = b.cam.bts ? '#11786c' : '#9b1f37', h = hov.has(b.id);
+    if (b.cam.id === gcam) { g.strokeStyle = '#a8561a'; g.lineWidth = 4; g.setLineDash([10, 7]); g.beginPath(); g.arc(b.cx, b.cy, b.r + 10, 0, 7); g.stroke(); g.setLineDash([]); }
+    g.fillStyle = on ? ink : '#fffaf1'; g.strokeStyle = h ? '#a8561a' : ink; g.lineWidth = h ? 7 : 5;
+    g.beginPath(); g.arc(b.cx, b.cy, h ? b.r + 4 : b.r, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = on ? '#fff' : ink; g.font = `700 26px ${SANS}`; g.fillText(String(b.cam.key), b.cx, b.cy + 9);
+  }
+  // POV title for whatever the viewer is pointing at (or the current seat)
+  const hc = MENU_BTNS.find(b => b.cam && hov.has(b.id));
+  g.textAlign = 'left'; g.fillStyle = '#6a5a5f'; g.font = `500 17px ${MONO}`;
+  g.fillText(hc ? `POINTING AT: ${hc.cam.name.toUpperCase()} · ${camWho(hc.cam).toUpperCase()}` : `${camWho(c).toUpperCase()} · ${c.sub.toUpperCase()}`, 34, 118, 530);
+  // right page: controls
+  g.fillStyle = '#a8561a'; g.font = `500 20px ${MONO}`; g.fillText(`${fmt(t)} / ${fmt(END)} · ${sectionAt(t).name.toUpperCase()}`, 640, 44, 520);
+  g.fillStyle = '#1d1418'; g.font = `400 40px ${SERIF}`; g.fillText('Every Seat', 640, 92);
+  g.fillStyle = '#6a5a5f'; g.font = `500 17px ${MONO}`; g.fillText('POINT AND PINCH, OR PULL THE TRIGGER', 640, 118);
+  for (const b of MENU_BTNS.filter(b => !b.cam)) {
+    const h = hov.has(b.id); let on = false, label, sub;
+    if (b.id === 'guided') { on = S.guided; label = S.guided ? 'Following the director' : 'Follow the director'; sub = S.guided ? 'GUIDED VIEW ON' : 'YOU CHOOSE THE SEAT'; }
+    else { label = S.playing ? 'Pause' : 'Play'; sub = 'SHOW'; }
+    g.fillStyle = on ? '#a8561a' : h ? '#efe4d1' : '#fffaf1'; rrect(g, b.x, b.y, b.w, b.h, 52); g.fill();
+    g.lineWidth = h ? 5 : 3; g.strokeStyle = on ? '#a8561a' : '#1d1418'; g.stroke();
+    g.fillStyle = on ? '#fff7ec' : '#6a5a5f'; g.font = `500 17px ${MONO}`; g.fillText(sub, b.x + 34, b.y + 38);
+    g.fillStyle = on ? '#fff7ec' : '#1d1418'; g.font = `700 34px ${SANS}`; g.fillText(label, b.x + 34, b.y + b.h - 26, b.w - 60);
+  }
+  // sponsor ad, rotated every 20 s
+  if (!vrSponsor || t - vrSponsorT > 20 || t < vrSponsorT) { vrSponsor = nextSponsor(); vrSponsorT = t; }
+  const A = VR_AD;
+  g.fillStyle = '#fffaf1'; rrect(g, A.x, A.y, A.w, A.h, 14); g.fill(); g.lineWidth = 2.5; g.strokeStyle = '#1d1418'; g.stroke();
+  g.fillStyle = '#6a5a5f'; g.font = `500 13px ${MONO}`; g.fillText('ADVERTISEMENT', A.x + 20, A.y + 26);
+  g.fillStyle = '#a8561a'; g.fillText(vrSponsor.brand.toUpperCase(), A.x + 170, A.y + 26, A.w - 190);
+  g.fillStyle = '#1d1418'; g.font = `400 31px ${SERIF}`; g.fillText(vrSponsor.head, A.x + 20, A.y + 66, A.w - 40);
+  g.fillStyle = '#6a5a5f'; g.font = `400 20px ${SANS}`; wrapText(g, vrSponsor.body, A.x + 20, A.y + 98, A.w - 40, 26, 2);
+  g.fillStyle = '#1d1418'; g.font = `700 20px ${SANS}`; g.fillText(vrSponsor.cta, A.x + 20, A.y + A.h - 16, A.w - 40);
   menu.tex.needsUpdate = true;
 }
 function drawCaps(lines, call) {
@@ -1194,7 +1521,10 @@ function hitMenu(c) {
   const hit = ray.intersectObject(menu.mesh)[0];
   if (!hit || !hit.uv) return null;
   const px = hit.uv.x * 1200, py = (1 - hit.uv.y) * 600;
-  const b = MENU_BTNS.find(b => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h);
+  // camera dots: the nearest one within reach (dots 2 and 6 sit close together)
+  let best = null, bd = Infinity;
+  for (const d of MENU_BTNS) if (d.cam) { const dist = Math.hypot(px - d.cx, py - d.cy); if (dist <= d.r + 12 && dist < bd) { bd = dist; best = d; } }
+  const b = best || MENU_BTNS.find(b => !b.cam && px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h);
   return b ? b.id : null;
 }
 function menuAction(id) {
@@ -1303,12 +1633,14 @@ function frame(now) {
   if (S.hands && S.playing && now - S.lastInput > 4000) $('app').classList.add('idle');
 }
 
-renderChapters(); renderMap(); renderPovs();
+renderChapters(); renderMap(); renderCamUI(); goPage(0); fillAds();
 S.yaw = 0; S.pitch = -0.02;
 $('tcEnd').textContent = fmt(END); $('scrub').max = END;
 resize(); setPlayIcon();
 renderer.setAnimationLoop(frame);   // setAnimationLoop (not rAF) so it also drives the headset's frame loop
-window.__everySeat = { S, seek, play, pause, cutTo, setGuided };
+window.__everySeat = { S, seek, play, pause, cutTo, setGuided, goPage, drawMenu: t => (drawMenu(t), menu.cv) };
 </script>
+<script src="/tyl-privacy.js" defer></script>
+<script src="/tyl-nav.js" defer></script>
 </body>
 </html>

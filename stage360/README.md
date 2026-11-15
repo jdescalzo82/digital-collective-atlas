@@ -22,6 +22,8 @@ The cheapest HTTPS host is GitHub Pages: copy the file into a Pages-enabled fold
 
 ### What's in it
 
+- **Seating chart:** cameras are picked from an overhead seating chart. Each camera is a dot at its real spot (stalls rows A–N, the balcony rail, the stage, the wings, the mix desk). Tap or click a dot, or press 1–6, to watch from there. The POV title shows beside the dot, in the card under the chart and briefly across the viewer. Hovering or focusing a dot previews its title first. A dashed ring marks the director's current pick, and an amber cone shows where you're looking.
+- **The program:** the controls are printed in a virtual theatre program: Seats (the chart), Sound, Access and Notes pages, turned with the arrows, the tabs, a swipe or the `[` `]` keys. Like a real program it carries ads: a strip at the foot of each page and full-page ads between pages. In a headset the menu is the same program, open to the seating chart on the left and controls plus a sponsor ad on the right.
 - **6 cameras:** Front Row, Mid-House, Balcony, On Stage, plus backstage cameras in the Stage-Left Wings and at the Mix Position (front-of-house desk). The backstage feeds show the stage manager's headset calls ("Standby lighting cue 12… GO").
 - **Guided view:** a director's cut written like a calling script (`CUES` in the code). It cuts between cameras and keeps the subject framed as performers move. Dragging, a keyboard key or picking a camera hands control to the viewer, and *Return to guided view* gives it back. In a headset the app never rotates the viewer's view on its own. It only re-aims the scene at a cut, so the subject lands wherever they are already looking. That avoids motion sickness.
 - **Binaural audio:** each musician is a separate source placed where they stand on stage (Web Audio HRTF panners). The listener sits at the selected camera and turns with your head (headset) or view (2D). Each seat also changes the room reverb and level. *Board mix* switches to a plain stereo desk mix for speakers.
@@ -97,6 +99,17 @@ The cheapest HTTPS host is GitHub Pages: copy the file into a Pages-enabled fold
    - Add stereo top/bottom 360 playback and a real cue track to the player.
 3. **Live beta:** SRT ingest, LL-HLS, a director console, and multi-camera sync.
 4. **Native apps** for Quest and Vision Pro, tiled streaming, and a care-home partner programme.
+
+## Ads in the program
+
+`PROGRAM_ADS` near the end of the script sets them up.
+
+- **Google AdSense:** on toolkityourlife.com, each slot shows an AdSense display unit. The AdSense script and the consent popup come from the site's shared `/tyl-privacy.js`. Create two display ad units in AdSense (one horizontal for the page-foot strip, one rectangle for full pages) and paste their ad-unit IDs into `UNITS.foot` and `UNITS.page`. Until then, or whenever AdSense leaves a slot empty, the slot shows a sponsor instead.
+- **Direct sponsors:** `SPONSORS` lists ads sold directly (brand, headline, line of copy, button text, link). They rotate through the slots and are the only ads shown inside the headset, because WebXR can't display AdSense. Put a paying sponsor at the top of the list. By default it holds house ads for other Toolkit Your Life tools and an "Advertise here" card.
+
+## On Toolkit Your Life
+
+Live at `toolkityourlife.com/EverySeat/`, listed under **Experimental** in the homepage dropdown (`$experimental` in `pages.php`). The page loads the site's shared `/tyl-privacy.js` (consent and AdSense) and `/tyl-nav.js` (the mini home menu at the top of the program).
 
 ## Files
 
